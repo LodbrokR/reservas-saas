@@ -62,7 +62,7 @@ export default async function ReservasPage() {
 
                     <div className="space-y-3">
                         {reservasReales.length === 0 ? (
-                            <div className="border border-dashed p-12 text-center rounded-lg text-muted-foreground">
+                            <div className="border border-dashed p-12 text-center rounded-lg text-muted-foreground bg-muted/20">
                                 No tienes reservas agendadas aún. El calendario está totalmente libre.
                             </div>
                         ) : (
@@ -70,22 +70,21 @@ export default async function ReservasPage() {
                                 const isPaid = reserva.payment_status === 'paid'
 
                                 return (
-                                    <Card key={reserva.id} className="overflow-hidden">
+                                    <Card key={reserva.id} className="overflow-hidden mb-4 shadow-sm hover:shadow-md transition-all">
                                         <div className={`h-1.5 w-full ${reserva.status === 'confirmed' ? 'bg-green-500' : reserva.status === 'canceled' ? 'bg-red-500' : 'bg-primary'}`} />
                                         <CardContent className="p-4 sm:p-6 sm:flex sm:items-center sm:justify-between">
-
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
                                                     <h3 className="font-semibold text-lg">{reserva.customers?.full_name || 'Cliente Desconocido'}</h3>
-                                                    <Badge variant="outline" className="text-xs">{reserva.id.split('-')[0]}</Badge>
+                                                    <Badge variant="outline" className="text-xs text-muted-foreground">{reserva.id.split('-')[0]}</Badge>
                                                 </div>
-                                                <p className="text-sm font-medium text-muted-foreground">
+                                                <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                                                     {reserva.resources?.name || 'Recurso Base'}
                                                 </p>
-                                                <div className="flex items-center gap-2 text-sm text-foreground font-medium mt-2">
+                                                <div className="flex items-center gap-2 text-sm text-foreground font-medium mt-2 bg-muted/30 w-fit px-2 py-1 rounded-md">
                                                     <Clock className="w-4 h-4 text-primary" />
                                                     <span>
-                                                        {new Date(reserva.start_time).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                                                        {new Date(reserva.start_time).toLocaleDateString('es-CL')} | {new Date(reserva.start_time).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
                                                         &nbsp;-&nbsp;
                                                         {new Date(reserva.end_time).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
                                                     </span>
@@ -93,26 +92,25 @@ export default async function ReservasPage() {
                                             </div>
 
                                             <div className="mt-4 sm:mt-0 flex flex-col sm:items-end gap-2">
-                                                <div className="flex gap-2">
+                                                <div className="flex flex-wrap gap-2">
                                                     <Badge variant={
                                                         reserva.status === 'confirmed' ? 'default' :
                                                             reserva.status === 'canceled' ? 'destructive' : 'secondary'
-                                                    }>
-                                                        {reserva.status.toUpperCase()}
+                                                    } className="capitalize">
+                                                        {reserva.status}
                                                     </Badge>
                                                     <Badge variant={isPaid ? "outline" : "secondary"} className={
                                                         isPaid
-                                                            ? "text-green-600 border-green-200 bg-green-50 dark:bg-green-900/10 dark:text-green-400 dark:border-green-800"
-                                                            : ""
+                                                            ? "text-green-600 border-green-200 bg-green-50 dark:bg-green-900/10 dark:text-green-400 dark:border-green-800 capitalize"
+                                                            : "capitalize"
                                                     }>
-                                                        {reserva.payment_status.toUpperCase()}
+                                                        {reserva.payment_status}
                                                     </Badge>
                                                 </div>
-                                                <button className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
-                                                    Ver detalles <MoreHorizontal className="w-3 h-3" />
+                                                <button className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors mt-2">
+                                                    Ver detalles <MoreHorizontal className="w-4 h-4" />
                                                 </button>
                                             </div>
-
                                         </CardContent>
                                     </Card>
                                 )
