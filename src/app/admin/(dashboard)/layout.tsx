@@ -1,6 +1,7 @@
 import { ReactNode } from "react"
 import Link from "next/link"
-import { Calendar, Users, Settings, LogOut, LayoutDashboard } from "lucide-react"
+import { Calendar, Users, Settings, LayoutDashboard } from "lucide-react"
+import { LogoutButton } from "@/components/logout-button"
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
     return (
@@ -29,10 +30,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     </Link>
                 </nav>
                 <div className="p-4 border-t">
-                    <button className="flex w-full items-center gap-3 px-3 py-2 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-                        <LogOut className="h-5 w-5" />
-                        Cerrar Sesión
-                    </button>
+                    <LogoutButton />
                 </div>
             </aside>
 
