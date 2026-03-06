@@ -14,7 +14,7 @@ export async function login(formData: FormData) {
         return { error: 'Faltan credenciales' }
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
     })
@@ -23,6 +23,20 @@ export async function login(formData: FormData) {
         return { error: error.message }
     }
 
+    // --- MAGIA SAAS: VERIFICAR SI ESTE USUARIO TIENE UN NEGOCIO ---
+    const { data: userTenant } = await supabase
+        .from('tenant_users')
+        .select('tenant_id')
+        .eq('user_id', data.user.id)
+        .maybeSingle()
+
+    // Si no tiene negocio, lo mandamos al Asistente de Instalación
+    if (!userTenant) {
+        revalidatePath('/setup', 'layout')
+        redirect('/setup')
+    }
+
+    // Si ya tiene negocio, entra a su Intranet Admin
     revalidatePath('/admin', 'layout')
     redirect('/admin')
 }
