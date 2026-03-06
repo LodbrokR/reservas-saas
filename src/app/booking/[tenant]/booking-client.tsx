@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Clock, MapPin, Calendar as CalendarIcon } from "lucide-react"
+import { es } from "date-fns/locale"
 
 // En Next.js 15 app router, page.tsx puede ser 'use client' si usa hooks o recibir props de layout servidor
 export default function BookingPageClient({
@@ -77,6 +78,7 @@ export default function BookingPageClient({
                         </h3>
                         <div className="flex justify-center border rounded-md p-2 bg-card">
                             <Calendar
+                                locale={es}
                                 mode="single"
                                 selected={date}
                                 onSelect={setDate}
