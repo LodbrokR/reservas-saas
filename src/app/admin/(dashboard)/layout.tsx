@@ -1,6 +1,6 @@
 import { ReactNode } from "react"
 import Link from "next/link"
-import { Calendar, Users, Settings, LayoutDashboard } from "lucide-react"
+import { Calendar, Users, Settings, LayoutDashboard, SlidersHorizontal } from "lucide-react"
 import { LogoutButton } from "@/components/logout-button"
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -25,8 +25,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                         Clientes
                     </Link>
                     <Link href="/admin/configuracion" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                        <Settings className="h-5 w-5" />
-                        Ajustes
+                        <SlidersHorizontal className="h-5 w-5" />
+                        Configuración
                     </Link>
                 </nav>
                 <div className="p-4 border-t">
