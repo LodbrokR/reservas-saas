@@ -19,6 +19,20 @@ export async function setupTenant(formData: FormData) {
 
     if (!negocioName || !rubro) return { error: 'Faltan datos obligatorios del formulario.' }
 
+    // --- BLOQUEO MULTI-TENANT ---
+    // En esta versión MVP, un usuario solo puede ser dueño de 1 Negocio.
+    if (user) {
+        const { data: alreadyHasTenant } = await supabaseAdmin
+            .from('tenant_users')
+            .select('id')
+            .eq('user_id', user.id)
+            .limit(1)
+
+        if (alreadyHasTenant && alreadyHasTenant.length > 0) {
+            return { error: 'Tu correo ya administra un Negocio. No puedes tener más de uno por cuenta.' }
+        }
+    }
+
     // Convertir nombre a Slug (ej: "Mi Peluquería" -> "mi-peluqueria")
     const slug = negocioName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
 

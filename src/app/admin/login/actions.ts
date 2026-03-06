@@ -28,6 +28,7 @@ export async function login(formData: FormData) {
         .from('tenant_users')
         .select('tenant_id')
         .eq('user_id', data.user.id)
+        .limit(1)
         .maybeSingle()
 
     // Si no tiene negocio, lo mandamos al Asistente de Instalación
