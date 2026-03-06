@@ -44,13 +44,12 @@ export async function setupTenant(formData: FormData) {
             .from('resources')
             .insert({
                 tenant_id: newTenant.id,
-                name: recursoBase,
-                type: 'staff'
+                name: recursoBase
             })
             .select('id')
             .single()
 
-        if (resErr) return { error: 'Error agregando recursos al negocio.' }
+        if (resErr) return { error: `Error creando recursos: ${resErr.message}` }
 
         // 4. (Opcional Futuro) Auto-Poblar Servicios Base en la BD
         // Aquí insertaríamos en una tabla "services" (Corte de Pelo, Lavado, Consulta Dental, etc.)
