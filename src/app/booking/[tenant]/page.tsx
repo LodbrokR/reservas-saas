@@ -26,12 +26,20 @@ export default async function BookingPage({
         .eq('tenant_id', tenantData.id)
         .order('created_at', { ascending: true })
 
+    // Cargar las reglas de disponibilidad horaria
+    const { data: availability } = await supabase
+        .from('availability_rules')
+        .select('day_of_week, start_time, end_time, is_active')
+        .eq('tenant_id', tenantData.id)
+        .eq('is_active', true)
+
     return (
         <BookingPageClient
             tenantSlug={tenant}
             tenantName={tenantData.name}
             tenantColor={tenantData.ui_primary_color || '#000000'}
             services={resources || []}
+            availability={availability || []}
         />
     )
 }

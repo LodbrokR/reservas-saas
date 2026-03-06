@@ -17,11 +17,13 @@ export default function BookingPageClient({
     tenantName,
     tenantColor,
     services,
+    availability,
 }: {
     tenantSlug: string
     tenantName: string
     tenantColor: string
     services: { id: string; name: string; description: string | null }[]
+    availability: { day_of_week: number; start_time: string; end_time: string; is_active: boolean }[]
 }) {
     const [date, setDate] = useState<Date | undefined>(new Date())
     const [selectedService, setSelectedService] = useState<string | null>(null)
@@ -32,8 +34,29 @@ export default function BookingPageClient({
     // Datos del formulario cliente final
     const [customer, setCustomer] = useState({ fullName: '', email: '', phone: '' })
 
-    // Horas inventadas para el día seleccionado
-    const horasDisponibles = ["10:00", "11:30", "15:00", "16:30", "18:00"]
+    // Calculamos los días activos de la semana (0=Dom, 1=Lun...)
+    const activeDays = new Set(availability.map(r => r.day_of_week))
+
+    // Bloques de horas dinámicos según el día seleccionado
+    function getHorasDisponibles(d: Date): string[] {
+        const dayNum = d.getDay()
+        const rule = availability.find(r => r.day_of_week === dayNum)
+        if (!rule) return []
+        const horas: string[] = []
+        const [startH, startM] = rule.start_time.substring(0, 5).split(':').map(Number)
+        const [endH, endM] = rule.end_time.substring(0, 5).split(':').map(Number)
+        let cur = startH * 60 + startM
+        const end = endH * 60 + endM
+        while (cur + 30 <= end) {
+            const h = String(Math.floor(cur / 60)).padStart(2, '0')
+            const m = String(cur % 60).padStart(2, '0')
+            horas.push(`${h}:${m}`)
+            cur += 30
+        }
+        return horas
+    }
+
+    const horasDisponibles = date ? getHorasDisponibles(date) : []
 
     const handleBooking = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -109,9 +132,12 @@ export default function BookingPageClient({
                                 locale={es}
                                 mode="single"
                                 selected={date}
-                                onSelect={setDate}
+                                onSelect={(d) => { setDate(d); setSelectedTime(null) }}
                                 className="rounded-md"
-                                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                                disabled={(d) =>
+                                    d < new Date(new Date().setHours(0, 0, 0, 0)) ||
+                                    (activeDays.size > 0 && !activeDays.has(d.getDay()))
+                                }
                             />
                         </div>
                     </div>
