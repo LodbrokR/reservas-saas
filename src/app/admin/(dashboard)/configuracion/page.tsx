@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import { TenantInfoForm, ResourcesManager } from './components'
+import { TenantInfoForm, ResourcesManager, WhatsAppForm } from './components'
 
 export const metadata = {
     title: 'Ajustes del Negocio | Admin',
@@ -23,7 +23,7 @@ export default async function ConfiguracionPage() {
 
     const { data: tenant } = await supabase
         .from('tenants')
-        .select('name, slug, ui_primary_color')
+        .select('name, slug, ui_primary_color, whatsapp_number, whatsapp_api_key')
         .eq('id', tenantUser.tenant_id)
         .single()
 
@@ -47,6 +47,7 @@ export default async function ConfiguracionPage() {
             <div className="grid gap-6 md:grid-cols-2">
                 <TenantInfoForm tenant={tenant} />
                 <ResourcesManager resources={resources || []} />
+                <WhatsAppForm tenant={tenant} />
             </div>
         </div>
     )

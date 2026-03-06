@@ -39,6 +39,26 @@ export async function updateTenantInfo(formData: FormData) {
     return { success: true }
 }
 
+// Guardar el número de WhatsApp y la API key de CallMeBot
+export async function updateWhatsApp(formData: FormData) {
+    const tenantId = await getCurrentTenantId()
+    if (!tenantId) return { error: 'No tienes permisos para esta acción.' }
+
+    const whatsapp_number = formData.get('whatsapp_number') as string
+    const whatsapp_api_key = formData.get('whatsapp_api_key') as string
+
+    const supabase = createAdminClient()
+    const { error } = await supabase
+        .from('tenants')
+        .update({ whatsapp_number, whatsapp_api_key })
+        .eq('id', tenantId)
+
+    if (error) return { error: `Error guardando WhatsApp: ${error.message}` }
+
+    revalidatePath('/admin/configuracion')
+    return { success: true }
+}
+
 // Agregar un nuevo servicio/recurso
 export async function addResource(formData: FormData) {
     const tenantId = await getCurrentTenantId()

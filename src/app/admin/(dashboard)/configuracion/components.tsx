@@ -4,14 +4,13 @@ import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Trash2, PlusCircle, Pencil, Settings2 } from 'lucide-react'
-import { addResource, deleteResource, updateTenantInfo } from './actions'
+import { Trash2, PlusCircle, Pencil, Settings2, MessageCircle, ExternalLink } from 'lucide-react'
+import { addResource, deleteResource, updateTenantInfo, updateWhatsApp } from './actions'
 import { toast } from 'sonner'
 
 type Resource = { id: string; name: string; description: string | null }
-type Tenant = { name: string; slug: string; ui_primary_color: string | null }
+type Tenant = { name: string; slug: string; ui_primary_color: string | null; whatsapp_number: string | null; whatsapp_api_key: string | null }
 
 export function TenantInfoForm({ tenant }: { tenant: Tenant }) {
     const [isPending, startTransition] = useTransition()
@@ -135,6 +134,85 @@ export function ResourcesManager({ resources }: { resources: Resource[] }) {
                         </Button>
                     </form>
                 </div>
+            </CardContent>
+        </Card>
+    )
+}
+
+export function WhatsAppForm({ tenant }: { tenant: Tenant }) {
+    const [isPending, startTransition] = useTransition()
+
+    async function handleSave(formData: FormData) {
+        startTransition(async () => {
+            const res = await updateWhatsApp(formData)
+            if (res.error) toast.error(res.error)
+            else toast.success('¡Configuración de WhatsApp guardada!')
+        })
+    }
+
+    return (
+        <Card className="col-span-2">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-green-500" /> Notificaciones WhatsApp
+                </CardTitle>
+                <CardDescription>
+                    Recibe un mensaje automático cada vez que un cliente agenda una reserva.
+                    Usa el servicio gratuito de <strong>CallMeBot</strong>.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+                {/* Instrucciones */}
+                <div className="bg-green-500/10 border border-green-500/30 rounded-md p-4 space-y-2">
+                    <p className="text-sm font-semibold text-green-700 dark:text-green-400">⚡ Activación en 2 pasos (solo una vez)</p>
+                    <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+                        <li>Agrega este número a tus contactos de WhatsApp: <strong className="text-foreground">+34 644 59 78 83</strong></li>
+                        <li>
+                            Envíale exactamente este mensaje:{' '}
+                            <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">I allow callmebot to send me messages</code>
+                        </li>
+                        <li>Recibirás tu <strong>API Key</strong> en respuesta. ¡Ya está!</li>
+                    </ol>
+                    <a
+                        href="https://www.callmebot.com/blog/free-api-whatsapp-messages/"
+                        target="_blank"
+                        className="text-xs text-green-600 hover:underline flex items-center gap-1 mt-1"
+                    >
+                        Ver documentación oficial <ExternalLink className="w-3 h-3" />
+                    </a>
+                </div>
+
+                {/* Formulario */}
+                <form action={handleSave} className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="whatsapp_number">Tu número (con código de país)</Label>
+                        <Input
+                            id="whatsapp_number"
+                            name="whatsapp_number"
+                            type="tel"
+                            placeholder="Ej: +56912345678"
+                            defaultValue={tenant.whatsapp_number || ''}
+                        />
+                        <p className="text-xs text-muted-foreground">Sin espacios, con + y código de país.</p>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="whatsapp_api_key">API Key de CallMeBot</Label>
+                        <Input
+                            id="whatsapp_api_key"
+                            name="whatsapp_api_key"
+                            type="password"
+                            placeholder="La recibirás por WhatsApp"
+                            defaultValue={tenant.whatsapp_api_key || ''}
+                        />
+                        <p className="text-xs text-muted-foreground">Se guarda encriptada en tu base de datos privada.</p>
+                    </div>
+                    <div className="sm:col-span-2">
+                        <Button type="submit" className="gap-2" disabled={isPending}>
+                            <MessageCircle className="w-4 h-4" />
+                            {isPending ? 'Guardando...' : 'Guardar Configuración de WhatsApp'}
+                        </Button>
+                    </div>
+                </form>
             </CardContent>
         </Card>
     )

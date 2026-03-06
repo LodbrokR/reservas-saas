@@ -17,10 +17,10 @@ export async function createReservation(
 
         const supabase = createAdminClient()
 
-        // 1. Obtener ID del Tenant
+        // 1. Obtener ID del Tenant (con datos de WhatsApp)
         const { data: tenant, error: tenantErr } = await supabase
             .from('tenants')
-            .select('id')
+            .select('id, name, whatsapp_number, whatsapp_api_key')
             .eq('slug', tenantSlug)
             .maybeSingle()
 
@@ -93,6 +93,36 @@ export async function createReservation(
         if (reserveErr) {
             console.error("Booking Error:", reserveErr)
             return { error: reserveErr.message || 'Ese horario posiblemente ya está ocupado o hubo un error al guardar la reserva.' }
+        }
+
+        // 6. Enviar notificación WhatsApp al dueño del negocio (si tiene configurado CallMeBot)
+        if (tenant.whatsapp_number && tenant.whatsapp_api_key) {
+            try {
+                const fechaFormateada = startDate.toLocaleDateString('es-CL', {
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                })
+                const horaFormateada = startDate.toLocaleTimeString('es-CL', {
+                    hour: '2-digit', minute: '2-digit'
+                })
+                const mensaje = [
+                    `🔔 *Nueva Reserva - ${tenant.name}*`,
+                    ``,
+                    `👤 Cliente: ${customerData.fullName}`,
+                    `📧 Email: ${customerData.email}`,
+                    `📱 Tel: ${customerData.phone}`,
+                    ``,
+                    `🗓️ Fecha: ${fechaFormateada}`,
+                    `⏰ Hora: ${horaFormateada} hrs`,
+                    `💼 Servicio: ${serviceName}`,
+                ].join('\n')
+
+                const encodedMsg = encodeURIComponent(mensaje)
+                const waUrl = `https://api.callmebot.com/whatsapp.php?phone=${tenant.whatsapp_number}&text=${encodedMsg}&apikey=${tenant.whatsapp_api_key}`
+                await fetch(waUrl)
+            } catch (waErr) {
+                // No fallar la reserva si WhatsApp falla
+                console.warn('WhatsApp notification failed:', waErr)
+            }
         }
 
         // Refrescar el caché de la app para que el Admin Dashboard vea la reserva
