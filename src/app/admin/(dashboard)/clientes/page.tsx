@@ -3,22 +3,32 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, Plus } from "lucide-react"
+import { createClient } from "@/utils/supabase/server"
 
-// Mock Data
-const clientesMock = [
-    { id: 1, nombre: "Juan Pérez", email: "juan@ejemplo.com", ultReserva: "10 Oct 2026", estado: "Frecuente" },
-    { id: 2, nombre: "María Silva", email: "masilva@gmail.com", ultReserva: "Hoy", estado: "Nuevo" },
-    { id: 3, nombre: "Pedro Castro", email: "pedro.c@empresa.cl", ultReserva: "02 Sep 2026", estado: "Inactivo" },
-]
+export default async function ClientesPage() {
+    const supabase = await createClient()
 
-export default function ClientesPage() {
+    // Extraemos los clientes de la BD (Si el usuario esta logeado, el RLS filtrará por su Tenant automáticamente)
+    const { data: clientes, error, count } = await supabase
+        .from('customers')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .limit(50) // Paginación inicial básica
+
+    if (error) {
+        console.error("Error trayendo clientes:", error)
+    }
+
+    // Si no hay datos (porque es BBDD nueva) ponemos una fila de muestra simulada
+    const clientesReales = clientes && clientes.length > 0 ? clientes : []
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Directorio de Clientes</h1>
                     <p className="text-muted-foreground mt-1">
-                        Gestiona la información de contacto y el historial de tus clientes.
+                        Gestiona la información de contacto y el historial de tus clientes en tiempo real.
                     </p>
                 </div>
                 <Button className="shrink-0 gap-2">
@@ -28,14 +38,14 @@ export default function ClientesPage() {
 
             <Card>
                 <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
-                            <CardTitle>Base de Datos</CardTitle>
+                            <CardTitle>Base de Datos Activa</CardTitle>
                             <CardDescription>
-                                Tienes un total de 1,204 clientes registrados.
+                                Tienes un total de {count ?? 0} clientes registrados en Postgres.
                             </CardDescription>
                         </div>
-                        <div className="relative w-64">
+                        <div className="relative w-full sm:w-64">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
                                 type="search"
@@ -50,28 +60,30 @@ export default function ClientesPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Nombre / Razón Social</TableHead>
-                                <TableHead>Contacto</TableHead>
-                                <TableHead>Última Reserva</TableHead>
-                                <TableHead className="text-right">Estado</TableHead>
+                                <TableHead>Correo Electrónico</TableHead>
+                                <TableHead>Teléfono</TableHead>
+                                <TableHead className="text-right">Fecha Ingreso</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {clientesMock.map((cliente) => (
-                                <TableRow key={cliente.id}>
-                                    <TableCell className="font-medium">{cliente.nombre}</TableCell>
-                                    <TableCell>{cliente.email}</TableCell>
-                                    <TableCell>{cliente.ultReserva}</TableCell>
-                                    <TableCell className="text-right">
-                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold
-                      ${cliente.estado === 'Frecuente' ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400' : ''}
-                      ${cliente.estado === 'Nuevo' ? 'bg-blue-100 text-blue-800 dark:bg-blue-800/20 dark:text-blue-400' : ''}
-                      ${cliente.estado === 'Inactivo' ? 'bg-gray-100 text-gray-800 dark:bg-gray-800/20 dark:text-gray-400' : ''}
-                    `}>
-                                            {cliente.estado}
-                                        </span>
+                            {clientesReales.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
+                                        Aún no hay clientes registrados en este Tenant. ¡Atrae tus primeras ventas!
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            ) : (
+                                clientesReales.map((cliente) => (
+                                    <TableRow key={cliente.id}>
+                                        <TableCell className="font-medium">{cliente.full_name}</TableCell>
+                                        <TableCell>{cliente.email || '—'}</TableCell>
+                                        <TableCell>{cliente.phone || '—'}</TableCell>
+                                        <TableCell className="text-right text-muted-foreground">
+                                            {new Date(cliente.created_at).toLocaleDateString('es-CL')}
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </CardContent>
