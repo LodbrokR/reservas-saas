@@ -22,10 +22,10 @@ export async function createReservation(
             .from('tenants')
             .select('id')
             .eq('slug', tenantSlug)
-            .single()
+            .maybeSingle()
 
         if (tenantErr || !tenant) {
-            return { error: `Negocio no encontrado. Detalles: ${tenantErr?.message || 'No existe'}` }
+            return { error: `Negocio no encontrado. Detalles: ${tenantErr?.message || 'El negocio (slug) no existe en la BD'}` }
         }
 
         // 2. Obtener el primer recurso disponible (Asumiremos que el Tenant tiene 1 recurso base por ahora en el MVP)
@@ -34,10 +34,10 @@ export async function createReservation(
             .select('id')
             .eq('tenant_id', tenant.id)
             .limit(1)
-            .single()
+            .maybeSingle()
 
         if (resErr || !resource) {
-            return { error: `Sin recursos. Detalles: ${resErr?.message || 'Ninguno'}` }
+            return { error: `Sin recursos configurados. Detalles: ${resErr?.message || 'Ninguno'}` }
         }
 
         // 3. Crear o encontrar Cliente (Customer CRM)
