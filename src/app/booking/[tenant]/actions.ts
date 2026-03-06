@@ -11,6 +11,10 @@ export async function createReservation(
     customerData: { fullName: string; email: string; phone: string }
 ) {
     try {
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            return { error: 'Falta configurar SUPABASE_SERVICE_ROLE_KEY en las variables de entorno de Vercel.' }
+        }
+
         const supabase = createAdminClient()
 
         // 1. Obtener ID del Tenant
@@ -20,7 +24,9 @@ export async function createReservation(
             .eq('slug', tenantSlug)
             .single()
 
-        if (tenantErr || !tenant) return { error: 'Negocio no encontrado.' }
+        if (tenantErr || !tenant) {
+            return { error: `Negocio no encontrado. Detalles: ${tenantErr?.message || 'No existe'}` }
+        }
 
         // 2. Obtener el primer recurso disponible (Asumiremos que el Tenant tiene 1 recurso base por ahora en el MVP)
         const { data: resource, error: resErr } = await supabase
@@ -30,7 +36,9 @@ export async function createReservation(
             .limit(1)
             .single()
 
-        if (resErr || !resource) return { error: 'No hay recursos configurados en este negocio.' }
+        if (resErr || !resource) {
+            return { error: `Sin recursos. Detalles: ${resErr?.message || 'Ninguno'}` }
+        }
 
         // 3. Crear o encontrar Cliente (Customer CRM)
         // Nota: Esto debería buscar por email para evitar duplicados, 
