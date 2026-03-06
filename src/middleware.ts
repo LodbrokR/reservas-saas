@@ -31,10 +31,8 @@ export async function middleware(request: NextRequest) {
         return supabaseResponse
     }
 
-    // Ejemplo simple de enrutamiento de Tenant por "Path"
-    // Si visitamos /mi-peluqueria redirigimos internamente a /booking/[tenantId]
-    // (Asumiendo que no es la landing page "/")
-    if (url.pathname !== '/' && !url.pathname.startsWith('/booking')) {
+    // Ignorar rutas del sistema como /setup de ser tratadas como nombre de negocio
+    if (url.pathname !== '/' && !url.pathname.startsWith('/booking') && !url.pathname.startsWith('/setup')) {
         const tenantSlug = url.pathname.split('/')[1]
 
         // Reescribimos la URL para que Next.js use la carpeta app/booking/[tenant]/page.tsx
