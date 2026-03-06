@@ -4,8 +4,12 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
-import { Clock, MapPin, Calendar as CalendarIcon } from "lucide-react"
+import { Clock, MapPin, Calendar as CalendarIcon, CheckCircle2 } from "lucide-react"
 import { es } from "date-fns/locale"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { createReservation } from "./actions"
+import { toast } from "sonner"
 
 // En Next.js 15 app router, page.tsx puede ser 'use client' si usa hooks o recibir props de layout servidor
 export default function BookingPageClient({
@@ -16,6 +20,11 @@ export default function BookingPageClient({
     const [date, setDate] = useState<Date | undefined>(new Date())
     const [selectedService, setSelectedService] = useState<string | null>(null)
     const [selectedTime, setSelectedTime] = useState<string | null>(null)
+    const [loading, setLoading] = useState(false)
+    const [isSuccess, setIsSuccess] = useState(false)
+
+    // Datos del formulario cliente final
+    const [customer, setCustomer] = useState({ fullName: '', email: '', phone: '' })
 
     // Mock data basado en el Slug para demostración
     const negocioMock = {
@@ -26,6 +35,22 @@ export default function BookingPageClient({
 
     // Horas inventadas para el día seleccionado
     const horasDisponibles = ["10:00", "11:30", "15:00", "16:30", "18:00"]
+
+    const handleBooking = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!date || !selectedService || !selectedTime) return
+
+        setLoading(true)
+        const res = await createReservation(tenantSlug, selectedService, date, selectedTime, customer)
+        setLoading(false)
+
+        if (res.error) {
+            toast.error(res.error)
+        } else {
+            setIsSuccess(true)
+            toast.success("¡Reserva confirmada con éxito!")
+        }
+    }
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center py-12 px-4 sm:px-6">
@@ -116,15 +141,52 @@ export default function BookingPageClient({
                     </div>
 
                 </CardContent>
-                {selectedService && date && selectedTime && (
-                    <div className="p-6 bg-muted/30 border-t flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4">
-                        <div className="text-sm">
-                            Has seleccionado <strong>{selectedService}</strong> el <strong>{date.toLocaleDateString('es-CL')}</strong> a las <strong>{selectedTime} hrs</strong>.
+
+                {isSuccess ? (
+                    <div className="p-12 bg-green-500/10 border-t flex flex-col items-center justify-center text-center space-y-4 animate-in fade-in zoom-in duration-500">
+                        <div className="h-16 w-16 rounded-full bg-green-500 text-white flex items-center justify-center">
+                            <CheckCircle2 className="h-8 w-8" />
                         </div>
-                        <Button size="lg" className="w-full sm:w-auto">
-                            Confirmar Reserva
+                        <div>
+                            <h3 className="text-xl font-bold text-green-700 dark:text-green-500">¡Reserva Confirmada!</h3>
+                            <p className="text-muted-foreground max-w-sm mt-2">
+                                Te hemos agendado el <strong>{date?.toLocaleDateString('es-CL')}</strong> a las <strong>{selectedTime} hrs</strong>.
+                                Te esperamos en {negocioMock.nombre}.
+                            </p>
+                        </div>
+                        <Button variant="outline" onClick={() => window.location.reload()} className="mt-4">
+                            Hacer nueva reserva
                         </Button>
                     </div>
+                ) : (
+                    selectedService && date && selectedTime && (
+                        <form onSubmit={handleBooking} className="p-6 bg-muted/30 border-t space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                            <div className="text-sm pb-4 border-b">
+                                ✅ Resumen: <strong>{selectedService}</strong> el <strong>{date.toLocaleDateString('es-CL')}</strong> a las <strong>{selectedTime} hrs</strong>.
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Nombre y Apellido</Label>
+                                    <Input id="name" required value={customer.fullName} onChange={e => setCustomer({ ...customer, fullName: e.target.value })} placeholder="Ej. Juan Pérez" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="email">Correo Electrónico</Label>
+                                    <Input id="email" type="email" required value={customer.email} onChange={e => setCustomer({ ...customer, email: e.target.value })} placeholder="correo@ejemplo.com" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone">Teléfono (WhatsApp)</Label>
+                                    <Input id="phone" type="tel" required value={customer.phone} onChange={e => setCustomer({ ...customer, phone: e.target.value })} placeholder="+56 9 1234 5678" />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end pt-2">
+                                <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={loading}>
+                                    {loading ? "Procesando en BD..." : "Confirmar Reserva"}
+                                </Button>
+                            </div>
+                        </form>
+                    )
                 )}
             </Card>
 
