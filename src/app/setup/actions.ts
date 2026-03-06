@@ -24,8 +24,8 @@ export async function setupTenant(formData: FormData) {
     if (user) {
         const { data: alreadyHasTenant } = await supabaseAdmin
             .from('tenant_users')
-            .select('id')
-            .eq('user_id', user.id)
+            .select('id, tenant_id')
+            .eq('id', user.id)
             .limit(1)
 
         if (alreadyHasTenant && alreadyHasTenant.length > 0) {
@@ -90,21 +90,21 @@ export async function setupTenant(formData: FormData) {
         // 4. (Opcional Futuro) Auto-Poblar Servicios Base en la BD
         // Aquí insertaríamos en una tabla "services" (Corte de Pelo, Lavado, Consulta Dental, etc.)
 
-        // 5. Vincular al usuario (si no estaba ya vinculado)
         if (user) {
             const { data: existingUserLink } = await supabaseAdmin
                 .from('tenant_users')
                 .select('id')
                 .eq('tenant_id', tenantId)
-                .eq('user_id', user.id)
+                .eq('id', user.id)
                 .maybeSingle()
 
             if (!existingUserLink) {
-                await supabaseAdmin.from('tenant_users').insert({
+                const { error: userLinkErr } = await supabaseAdmin.from('tenant_users').insert({
                     tenant_id: tenantId,
-                    user_id: user.id,
+                    id: user.id,
                     role: 'owner'
                 })
+                if (userLinkErr) return { error: `Error vinculando tu usuario al negocio: ${userLinkErr.message}` }
             }
         }
 

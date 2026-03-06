@@ -27,7 +27,7 @@ export async function login(formData: FormData) {
     const { data: userTenant } = await supabase
         .from('tenant_users')
         .select('tenant_id')
-        .eq('user_id', data.user.id)
+        .eq('id', data.user.id)
         .limit(1)
         .maybeSingle()
 
