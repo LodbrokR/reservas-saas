@@ -26,8 +26,7 @@ export async function setupTenant(formData: FormData) {
             .from('tenants')
             .insert({
                 name: negocioName,
-                slug: slug,
-                settings: { theme: 'system', rubro: rubro }
+                slug: slug
             })
             .select('id')
             .single()
