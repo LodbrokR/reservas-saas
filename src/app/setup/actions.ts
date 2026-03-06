@@ -1,13 +1,15 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 export async function setupTenant(formData: FormData) {
-    const supabase = await createClient()
+    const supabaseSession = await createClient() // Para verificar el User
+    const supabaseAdmin = createAdminClient()    // Para insertar la Base (Bypass RLS)
 
     // 1. Validar que el usuario esté logeado (Debe ser el "Dueño" inicial)
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await supabaseSession.auth.getUser()
 
     // Para entornos de Demo relajados (Bypass si no hay Login estricto por ahora)
     // if (!user) return { error: 'Debes iniciar sesión primero para reclamar un negocio.' }
@@ -21,8 +23,8 @@ export async function setupTenant(formData: FormData) {
     const slug = negocioName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
 
     try {
-        // 2. Crear el Tenant
-        const { data: newTenant, error: tenantErr } = await supabase
+        // 2. Crear el Tenant (Usando Admin Role para BYPASS RLS limit)
+        const { data: newTenant, error: tenantErr } = await supabaseAdmin
             .from('tenants')
             .insert({
                 name: negocioName,
@@ -38,7 +40,7 @@ export async function setupTenant(formData: FormData) {
             rubro === 'clinica' ? 'Box Médico 1' :
                 'Recurso Primario'
 
-        const { data: newResource, error: resErr } = await supabase
+        const { data: newResource, error: resErr } = await supabaseAdmin
             .from('resources')
             .insert({
                 tenant_id: newTenant.id,
@@ -55,7 +57,7 @@ export async function setupTenant(formData: FormData) {
 
         // 5. Vincular al usuario logeado actual con este Tenant (Para que el Dashboard funcione)
         if (user) {
-            await supabase.from('tenant_users').insert({
+            await supabaseAdmin.from('tenant_users').insert({
                 tenant_id: newTenant.id,
                 user_id: user.id,
                 role: 'owner'
