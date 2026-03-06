@@ -23,44 +23,75 @@ export async function setupTenant(formData: FormData) {
     const slug = negocioName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
 
     try {
-        // 2. Crear el Tenant (Usando Admin Role para BYPASS RLS limit)
-        const { data: newTenant, error: tenantErr } = await supabaseAdmin
-            .from('tenants')
-            .insert({
-                name: negocioName,
-                slug: slug
-            })
-            .select('id')
-            .single()
+        // 2. Buscar o Crear el Tenant (Idempotente)
+        let tenantId = null;
 
-        if (tenantErr) return { error: `Error creando negocio: ${tenantErr.message}. Quizá el nombre ya existe.` }
+        // Intentar buscar si el Tenant ya existe (caso de fallos a la mitad)
+        const { data: existingTenant } = await supabaseAdmin
+            .from('tenants')
+            .select('id')
+            .eq('slug', slug)
+            .maybeSingle()
+
+        if (existingTenant) {
+            tenantId = existingTenant.id;
+        } else {
+            // Si no existe, crearlo fresco
+            const { data: newTenant, error: tenantErr } = await supabaseAdmin
+                .from('tenants')
+                .insert({
+                    name: negocioName,
+                    slug: slug
+                })
+                .select('id')
+                .single()
+
+            if (tenantErr) return { error: `Error creando negocio: ${tenantErr.message}. Prueba con un nombre distinto.` }
+            tenantId = newTenant.id;
+        }
 
         // 3. Crear el primer "Recurso" (Ej: Sillón o Box)
         const recursoBase = rubro === 'peluqueria' ? 'Sillón Principal' :
             rubro === 'clinica' ? 'Box Médico 1' :
                 'Recurso Primario'
 
-        const { data: newResource, error: resErr } = await supabaseAdmin
+        // Verificar si el recurso principal existe primero
+        const { data: existingResource } = await supabaseAdmin
             .from('resources')
-            .insert({
-                tenant_id: newTenant.id,
-                name: recursoBase
-            })
             .select('id')
-            .single()
+            .eq('tenant_id', tenantId)
+            .maybeSingle()
 
-        if (resErr) return { error: `Error creando recursos: ${resErr.message}` }
+        if (!existingResource) {
+            const { error: resErr } = await supabaseAdmin
+                .from('resources')
+                .insert({
+                    tenant_id: tenantId,
+                    name: recursoBase
+                })
+
+            if (resErr) return { error: `Error creando recursos: ${resErr.message}` }
+        }
 
         // 4. (Opcional Futuro) Auto-Poblar Servicios Base en la BD
         // Aquí insertaríamos en una tabla "services" (Corte de Pelo, Lavado, Consulta Dental, etc.)
 
-        // 5. Vincular al usuario logeado actual con este Tenant (Para que el Dashboard funcione)
+        // 5. Vincular al usuario (si no estaba ya vinculado)
         if (user) {
-            await supabaseAdmin.from('tenant_users').insert({
-                tenant_id: newTenant.id,
-                user_id: user.id,
-                role: 'owner'
-            })
+            const { data: existingUserLink } = await supabaseAdmin
+                .from('tenant_users')
+                .select('id')
+                .eq('tenant_id', tenantId)
+                .eq('user_id', user.id)
+                .maybeSingle()
+
+            if (!existingUserLink) {
+                await supabaseAdmin.from('tenant_users').insert({
+                    tenant_id: tenantId,
+                    user_id: user.id,
+                    role: 'owner'
+                })
+            }
         }
 
         revalidatePath('/admin')
