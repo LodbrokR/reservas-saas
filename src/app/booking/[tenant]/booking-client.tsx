@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
-import { Clock, MapPin, Calendar as CalendarIcon, CheckCircle2 } from "lucide-react"
+import { Clock, Calendar as CalendarIcon, CheckCircle2 } from "lucide-react"
 import { es } from "date-fns/locale"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,8 +14,14 @@ import { toast } from "sonner"
 // En Next.js 15 app router, page.tsx puede ser 'use client' si usa hooks o recibir props de layout servidor
 export default function BookingPageClient({
     tenantSlug,
+    tenantName,
+    tenantColor,
+    services,
 }: {
     tenantSlug: string
+    tenantName: string
+    tenantColor: string
+    services: { id: string; name: string; description: string | null }[]
 }) {
     const [date, setDate] = useState<Date | undefined>(new Date())
     const [selectedService, setSelectedService] = useState<string | null>(null)
@@ -25,13 +31,6 @@ export default function BookingPageClient({
 
     // Datos del formulario cliente final
     const [customer, setCustomer] = useState({ fullName: '', email: '', phone: '' })
-
-    // Mock data basado en el Slug para demostración
-    const negocioMock = {
-        nombre: tenantSlug.replace('-', ' ').toUpperCase(),
-        direccion: "Av. Providencia 1234, Santiago",
-        servicios: ["Corte de Cabello", "Perfilado de Barba", "Masaje Capilar"]
-    }
 
     // Horas inventadas para el día seleccionado
     const horasDisponibles = ["10:00", "11:30", "15:00", "16:30", "18:00"]
@@ -57,13 +56,13 @@ export default function BookingPageClient({
 
             {/* Header Corporativo del Tenant */}
             <div className="w-full max-w-4xl mb-8 text-center space-y-4">
-                <div className="mx-auto h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary">
-                    <span className="text-2xl font-bold text-primary">{negocioMock.nombre.charAt(0)}</span>
+                <div
+                    className="mx-auto h-20 w-20 rounded-full flex items-center justify-center border-2 text-white"
+                    style={{ backgroundColor: tenantColor }}
+                >
+                    <span className="text-2xl font-bold">{tenantName.charAt(0).toUpperCase()}</span>
                 </div>
-                <h1 className="text-3xl font-extrabold tracking-tight">{negocioMock.nombre}</h1>
-                <p className="text-muted-foreground flex items-center justify-center gap-2">
-                    <MapPin className="h-4 w-4" /> {negocioMock.direccion}
-                </p>
+                <h1 className="text-3xl font-extrabold tracking-tight">{tenantName}</h1>
             </div>
 
             {/* Booking Widget Principal */}
@@ -81,18 +80,22 @@ export default function BookingPageClient({
                             <Clock className="h-4 w-4 text-primary" /> ¿Qué necesitas?
                         </h3>
                         <div className="grid gap-2">
-                            {negocioMock.servicios.map((servicio, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => setSelectedService(servicio)}
-                                    className={`flex justify-between items-center p-3 text-left border rounded-lg transition-all text-sm
-                    ${selectedService === servicio ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'hover:border-primary/50 hover:bg-muted/50'}
+                            {services.length === 0 ? (
+                                <p className="text-sm text-muted-foreground italic text-center py-4">No hay servicios configurados aún.</p>
+                            ) : (
+                                services.map((servicio) => (
+                                    <button
+                                        key={servicio.id}
+                                        onClick={() => setSelectedService(servicio.name)}
+                                        className={`flex justify-between items-center p-3 text-left border rounded-lg transition-all text-sm
+                    ${selectedService === servicio.name ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'hover:border-primary/50 hover:bg-muted/50'}
                   `}
-                                >
-                                    <span className="font-medium">{servicio}</span>
-                                    <span className="text-muted-foreground text-xs">30 min</span>
-                                </button>
-                            ))}
+                                    >
+                                        <span className="font-medium">{servicio.name}</span>
+                                        <span className="text-muted-foreground text-xs">{servicio.description || '30 min'}</span>
+                                    </button>
+                                ))
+                            )}
                         </div>
                     </div>
 
@@ -151,7 +154,7 @@ export default function BookingPageClient({
                             <h3 className="text-xl font-bold text-green-700 dark:text-green-500">¡Reserva Confirmada!</h3>
                             <p className="text-muted-foreground max-w-sm mt-2">
                                 Te hemos agendado el <strong>{date?.toLocaleDateString('es-CL')}</strong> a las <strong>{selectedTime} hrs</strong>.
-                                Te esperamos en {negocioMock.nombre}.
+                                Te esperamos en {tenantName}.
                             </p>
                         </div>
                         <Button variant="outline" onClick={() => window.location.reload()} className="mt-4">

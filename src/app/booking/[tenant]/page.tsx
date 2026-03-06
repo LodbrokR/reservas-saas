@@ -1,4 +1,6 @@
 import BookingPageClient from './booking-client'
+import { createClient } from '@/utils/supabase/server'
+import { notFound } from 'next/navigation'
 
 export default async function BookingPage({
     params,
@@ -6,12 +8,30 @@ export default async function BookingPage({
     params: Promise<{ tenant: string }>
 }) {
     const { tenant } = await params
+    const supabase = await createClient()
 
-    // Aquí en el futuro (cuando la BD tenga servicios/horarios reales), 
-    // Podríamos hacer un `await supabase.from('tenants').select().eq('slug', tenant)`
-    // y pasar los horarios al Client Component.
+    // Cargar datos reales del Tenant por Slug
+    const { data: tenantData } = await supabase
+        .from('tenants')
+        .select('id, name, slug, ui_primary_color')
+        .eq('slug', tenant)
+        .maybeSingle()
+
+    if (!tenantData) return notFound()
+
+    // Cargar los Servicios/Recursos reales de este negocio
+    const { data: resources } = await supabase
+        .from('resources')
+        .select('id, name, description')
+        .eq('tenant_id', tenantData.id)
+        .order('created_at', { ascending: true })
 
     return (
-        <BookingPageClient tenantSlug={tenant} />
+        <BookingPageClient
+            tenantSlug={tenant}
+            tenantName={tenantData.name}
+            tenantColor={tenantData.ui_primary_color || '#000000'}
+            services={resources || []}
+        />
     )
 }
