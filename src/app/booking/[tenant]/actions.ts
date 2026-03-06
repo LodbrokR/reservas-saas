@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 export async function createReservation(
@@ -10,7 +10,7 @@ export async function createReservation(
     timeStr: string,
     customerData: { fullName: string; email: string; phone: string }
 ) {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     // 1. Obtener ID del Tenant
     const { data: tenant, error: tenantErr } = await supabase
