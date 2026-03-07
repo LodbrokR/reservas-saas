@@ -9,6 +9,16 @@ import { saveAvailabilityRule } from './actions'
 import { toast } from 'sonner'
 
 const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+// Orden de visualización en panel: Lunes a Domingo
+const ORDERED_DAYS = [
+    { idx: 1, name: 'Lunes' },
+    { idx: 2, name: 'Martes' },
+    { idx: 3, name: 'Miércoles' },
+    { idx: 4, name: 'Jueves' },
+    { idx: 5, name: 'Viernes' },
+    { idx: 6, name: 'Sábado' },
+    { idx: 0, name: 'Domingo' },
+]
 const WORK_DAYS_DEFAULT = [1, 2, 3, 4, 5] // Lunes a Viernes
 
 type Rule = {
@@ -139,60 +149,66 @@ export default function HorariosClient({ rules, resources, businessType }: { rul
 
             {/* Configuración de días */}
             <div className="space-y-3">
-                {schedule.map((rule, dayIdx) => (
-                    <div
-                        key={dayIdx}
-                        className={`p-4 rounded-lg border flex flex-col sm:flex-row sm:items-center gap-4 transition-colors ${rule.is_active ? 'bg-card' : 'bg-muted/30 opacity-60'}`}
-                    >
-                        {/* Día + Switch */}
-                        <div className="flex items-center gap-3 min-w-[130px]">
-                            <Switch
-                                id={`day-${dayIdx}`}
-                                checked={rule.is_active}
-                                onCheckedChange={(val) => updateRule(dayIdx, 'is_active', val)}
-                            />
-                            <Label htmlFor={`day-${dayIdx}`} className="font-semibold text-sm cursor-pointer">
-                                {DAYS[dayIdx]}
-                            </Label>
-                        </div>
+                {ORDERED_DAYS.map((dayDef) => {
+                    const dayIdx = dayDef.idx;
+                    const rule = schedule[dayIdx];
+                    if (!rule) return null;
 
-                        {/* Horario */}
-                        <div className="flex items-center gap-2 flex-1">
-                            <div className="flex items-center gap-2">
-                                <Label className="text-xs text-muted-foreground shrink-0">Desde</Label>
-                                <Input
-                                    type="time"
-                                    value={rule.start_time}
-                                    onChange={(e) => updateRule(dayIdx, 'start_time', e.target.value)}
-                                    className="w-28 h-8 text-sm"
-                                    disabled={!rule.is_active}
-                                />
-                            </div>
-                            <span className="text-muted-foreground">→</span>
-                            <div className="flex items-center gap-2">
-                                <Label className="text-xs text-muted-foreground shrink-0">Hasta</Label>
-                                <Input
-                                    type="time"
-                                    value={rule.end_time}
-                                    onChange={(e) => updateRule(dayIdx, 'end_time', e.target.value)}
-                                    className="w-28 h-8 text-sm"
-                                    disabled={!rule.is_active}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Guardar */}
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleSave(dayIdx)}
-                            disabled={isPending}
-                            className="shrink-0"
+                    return (
+                        <div
+                            key={dayIdx}
+                            className={`p-4 rounded-lg border flex flex-col sm:flex-row sm:items-center gap-4 transition-colors ${rule.is_active ? 'bg-card' : 'bg-muted/30 opacity-60'}`}
                         >
-                            Guardar
-                        </Button>
-                    </div>
-                ))}
+                            {/* Día + Switch */}
+                            <div className="flex items-center gap-3 min-w-[130px]">
+                                <Switch
+                                    id={`day-${dayIdx}`}
+                                    checked={rule.is_active}
+                                    onCheckedChange={(val) => updateRule(dayIdx, 'is_active', val)}
+                                />
+                                <Label htmlFor={`day-${dayIdx}`} className="font-semibold text-sm cursor-pointer">
+                                    {dayDef.name}
+                                </Label>
+                            </div>
+
+                            {/* Horario */}
+                            <div className="flex items-center gap-2 flex-1">
+                                <div className="flex items-center gap-2">
+                                    <Label className="text-xs text-muted-foreground shrink-0">Desde</Label>
+                                    <Input
+                                        type="time"
+                                        value={rule.start_time}
+                                        onChange={(e) => updateRule(dayIdx, 'start_time', e.target.value)}
+                                        className="w-28 h-8 text-sm"
+                                        disabled={!rule.is_active}
+                                    />
+                                </div>
+                                <span className="text-muted-foreground">→</span>
+                                <div className="flex items-center gap-2">
+                                    <Label className="text-xs text-muted-foreground shrink-0">Hasta</Label>
+                                    <Input
+                                        type="time"
+                                        value={rule.end_time}
+                                        onChange={(e) => updateRule(dayIdx, 'end_time', e.target.value)}
+                                        className="w-28 h-8 text-sm"
+                                        disabled={!rule.is_active}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Guardar */}
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSave(dayIdx)}
+                                disabled={isPending}
+                                className="shrink-0"
+                            >
+                                Guardar
+                            </Button>
+                        </div>
+                    )
+                })}
             </div>
 
             {/* Botón Guardar Todos */}
