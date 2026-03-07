@@ -87,6 +87,31 @@ export default function HorariosClient({ rules, resources, businessType }: { rul
         })
     }
 
+    async function handleSaveAll() {
+        startTransition(async () => {
+            let hasError = false
+            for (let i = 0; i < schedule.length; i++) {
+                const rule = schedule[i]
+                const formData = new FormData()
+                formData.append('day_of_week', String(rule.day_of_week))
+                formData.append('start_time', rule.start_time)
+                formData.append('end_time', rule.end_time)
+                formData.append('is_active', String(rule.is_active))
+                if (selectedResourceId) formData.append('resource_id', selectedResourceId)
+
+                const res = await saveAvailabilityRule(formData)
+                if (res.error) {
+                    toast.error(`Error en ${DAYS[i]}: ${res.error}`)
+                    hasError = true
+                    break
+                }
+            }
+            if (!hasError) {
+                toast.success('Horario semanal completo guardado exitosamente.')
+            }
+        })
+    }
+
     return (
         <div className="space-y-6">
             {/* Selector de Recurso */}
@@ -168,6 +193,17 @@ export default function HorariosClient({ rules, resources, businessType }: { rul
                         </Button>
                     </div>
                 ))}
+            </div>
+
+            {/* Botón Guardar Todos */}
+            <div className="pt-4 flex justify-end border-t">
+                <Button
+                    onClick={handleSaveAll}
+                    disabled={isPending}
+                    className="w-full sm:w-auto"
+                >
+                    {isPending ? 'Guardando...' : 'Guardar Horario Semanal'}
+                </Button>
             </div>
         </div>
     )
