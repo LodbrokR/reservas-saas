@@ -154,3 +154,35 @@ export async function createReservation(
         return { error: `Error interno de validación: ${e.message}` }
     }
 }
+
+// Obtener los slots ya reservados para un día puntual
+export async function getBookedSlots(tenantSlug: string, dateStr: string): Promise<string[]> {
+    const supabase = createAdminClient()
+
+    const { data: tenant } = await supabase
+        .from('tenants')
+        .select('id, allow_overlap')
+        .eq('slug', tenantSlug)
+        .maybeSingle()
+
+    if (!tenant || tenant.allow_overlap) return []
+
+    const dayStart = new Date(`${dateStr}T00:00:00`).toISOString()
+    const dayEnd = new Date(`${dateStr}T23:59:59`).toISOString()
+
+    const { data: reservas } = await supabase
+        .from('reservations')
+        .select('start_time')
+        .eq('tenant_id', tenant.id)
+        .not('status', 'eq', 'canceled')
+        .gte('start_time', dayStart)
+        .lte('start_time', dayEnd)
+
+    if (!reservas) return []
+
+    return reservas.map(r => {
+        const d = new Date(r.start_time)
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    })
+}
+

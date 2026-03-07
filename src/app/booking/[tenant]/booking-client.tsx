@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { DayPicker } from "react-day-picker"
 import { es } from "date-fns/locale"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Clock, CheckCircle2, ChevronRight, ChevronLeft, Calendar as CalIcon, User, Sparkles } from "lucide-react"
-import { createReservation } from "./actions"
+import { Clock, CheckCircle2, ChevronRight, ChevronLeft, Calendar as CalIcon, Sparkles } from "lucide-react"
+import { createReservation, getBookedSlots } from "./actions"
 import { toast } from "sonner"
 import "react-day-picker/dist/style.css"
 
@@ -141,6 +141,17 @@ export default function BookingPageClient({
     const [customer, setCustomer] = useState({ fullName: "", email: "", phone: "", notes: "" })
     const [loading, setLoading] = useState(false)
     const [showConfetti, setShowConfetti] = useState(false)
+    const [bookedSlots, setBookedSlots] = useState<string[]>([])
+    const [loadingSlots, setLoadingSlots] = useState(false)
+
+    // Cargar los slots ocupados cada vez que cambia la fecha seleccionada
+    useEffect(() => {
+        if (!date) { setBookedSlots([]); return }
+        setLoadingSlots(true)
+        getBookedSlots(tenantSlug, format(date, 'yyyy-MM-dd'))
+            .then(slots => setBookedSlots(slots))
+            .finally(() => setLoadingSlots(false))
+    }, [date, tenantSlug])
 
     const activeDays = new Set(availability.map(r => r.day_of_week))
 
@@ -257,6 +268,10 @@ export default function BookingPageClient({
                         <div className="h-full flex items-center justify-center border border-dashed rounded-2xl p-8 text-center text-muted-foreground text-sm">
                             👆 Selecciona un día en el calendario
                         </div>
+                    ) : loadingSlots ? (
+                        <div className="border rounded-2xl p-8 text-center text-muted-foreground text-sm animate-pulse">
+                            Cargando disponibilidad...
+                        </div>
                     ) : horas.length === 0 ? (
                         <div className="border border-dashed rounded-2xl p-8 text-center text-muted-foreground text-sm">
                             No hay disponibilidad este día.
@@ -268,19 +283,29 @@ export default function BookingPageClient({
                                     <div key={label as string}>
                                         <p className="text-xs font-semibold text-muted-foreground mb-2">{label as string}</p>
                                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-                                            {(slots as string[]).map(h => (
-                                                <button
-                                                    key={h}
-                                                    onClick={() => setSelectedTime(h)}
-                                                    className={`py-2 text-sm rounded-xl border font-medium transition-all duration-150 ${selectedTime === h
-                                                        ? "text-white border-transparent shadow-md scale-105"
-                                                        : "hover:border-[var(--tc)]/50 hover:bg-muted"
-                                                        }`}
-                                                    style={selectedTime === h ? { backgroundColor: tenantColor } : { "--tc": tenantColor } as any}
-                                                >
-                                                    {h}
-                                                </button>
-                                            ))}
+                                            {(slots as string[]).map(h => {
+                                                const isBooked = bookedSlots.includes(h)
+                                                const isSelected = selectedTime === h
+                                                return (
+                                                    <button
+                                                        key={h}
+                                                        onClick={() => !isBooked && setSelectedTime(h)}
+                                                        disabled={isBooked}
+                                                        title={isBooked ? "Este horario ya está reservado" : `Reservar las ${h} hrs`}
+                                                        className={`py-2 text-sm rounded-xl border font-medium transition-all duration-150 flex flex-col items-center gap-0.5
+                                                            ${isBooked
+                                                                ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900 text-red-400 cursor-not-allowed opacity-70"
+                                                                : isSelected
+                                                                    ? "text-white border-transparent shadow-md scale-105"
+                                                                    : "hover:border-[var(--tc)]/50 hover:bg-muted"
+                                                            }`}
+                                                        style={isSelected && !isBooked ? { backgroundColor: tenantColor } : { "--tc": tenantColor } as any}
+                                                    >
+                                                        <span className={isBooked ? "line-through" : ""}>{h}</span>
+                                                        {isBooked && <span className="text-[9px] font-normal leading-none">Ocupado</span>}
+                                                    </button>
+                                                )
+                                            })}
                                         </div>
                                     </div>
                                 )
