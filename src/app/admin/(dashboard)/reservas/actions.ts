@@ -85,3 +85,21 @@ export async function updateReservationStatus(reservationId: string, status: str
     revalidatePath('/admin/reservas')
     return { success: true }
 }
+
+// Eliminar una reserva permanentemente
+export async function deleteReservation(reservationId: string) {
+    const tenantId = await getCurrentTenantId()
+    if (!tenantId) return { error: 'Sin permisos.' }
+
+    const supabase = createAdminClient()
+    const { error } = await supabase
+        .from('reservations')
+        .delete()
+        .eq('id', reservationId)
+        .eq('tenant_id', tenantId)  // Seguridad: solo borra las suyas
+
+    if (error) return { error: `Error eliminando reserva: ${error.message}` }
+
+    revalidatePath('/admin/reservas')
+    return { success: true }
+}

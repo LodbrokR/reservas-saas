@@ -9,8 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { CalendarIcon, Clock, User, ChevronDown, ChevronUp, CheckCircle, XCircle, RotateCcw } from 'lucide-react'
-import { updateReservationTime, updateCustomerData, updateReservationStatus } from './actions'
+import { CalendarIcon, Clock, User, ChevronDown, ChevronUp, CheckCircle, XCircle, RotateCcw, Trash2 } from 'lucide-react'
+import { updateReservationTime, updateCustomerData, updateReservationStatus, deleteReservation } from './actions'
 import { toast } from 'sonner'
 import 'react-day-picker/dist/style.css'
 
@@ -48,6 +48,7 @@ export function ReservaCard({ reserva }: { reserva: Reserva }) {
     const [expanded, setExpanded] = useState(false)
     const [editTab, setEditTab] = useState<'horario' | 'cliente'>('horario')
     const [isPending, startTransition] = useTransition()
+    const [confirmDelete, setConfirmDelete] = useState(false)
 
     // Estado del editor de horario
     const [selectedDate, setSelectedDate] = useState<Date>(new Date(reserva.start_time))
@@ -92,6 +93,14 @@ export function ReservaCard({ reserva }: { reserva: Reserva }) {
             const res = await updateReservationStatus(reserva.id, status)
             if (res.error) toast.error(res.error)
             else toast.success(`Estado cambiado a "${STATUS_LABELS[status]}".`)
+        })
+    }
+
+    function handleDelete() {
+        startTransition(async () => {
+            const res = await deleteReservation(reserva.id)
+            if (res.error) toast.error(res.error)
+            else toast.success('Reserva eliminada permanentemente.')
         })
     }
 
@@ -147,6 +156,35 @@ export function ReservaCard({ reserva }: { reserva: Reserva }) {
                                 className="p-1.5 rounded text-muted-foreground hover:bg-muted transition-colors">
                                 <RotateCcw className="w-4 h-4" />
                             </button>
+                        )}
+
+                        {/* Eliminar con confirmación en 2 pasos */}
+                        {!confirmDelete ? (
+                            <button
+                                title="Eliminar reserva"
+                                onClick={() => setConfirmDelete(true)}
+                                disabled={isPending}
+                                className="p-1.5 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ml-1"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        ) : (
+                            <div className="flex items-center gap-1 ml-1 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg px-2 py-1">
+                                <span className="text-xs text-red-600 font-medium">¿Eliminar?</span>
+                                <button
+                                    onClick={handleDelete}
+                                    disabled={isPending}
+                                    className="text-xs font-bold text-red-600 hover:text-red-800 px-1.5 py-0.5 rounded hover:bg-red-100 transition-colors"
+                                >
+                                    {isPending ? '...' : 'Sí'}
+                                </button>
+                                <button
+                                    onClick={() => setConfirmDelete(false)}
+                                    className="text-xs text-muted-foreground hover:text-foreground px-1 py-0.5"
+                                >
+                                    No
+                                </button>
+                            </div>
                         )}
                         <Button
                             size="sm"
