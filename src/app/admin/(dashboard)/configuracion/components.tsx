@@ -9,8 +9,15 @@ import { Trash2, PlusCircle, Pencil, Settings2, MessageCircle, ExternalLink, Shi
 import { addResource, deleteResource, updateTenantInfo, updateWhatsApp, updateBookingPolicy } from './actions'
 import { toast } from 'sonner'
 
-type Resource = { id: string; name: string; description: string | null }
-type Tenant = { name: string; slug: string; ui_primary_color: string | null; whatsapp_number: string | null; whatsapp_api_key: string | null; allow_overlap: boolean | null }
+type Resource = { id: string; name: string; display_name: string | null; description: string | null; capacity: number | null; resource_type: string | null }
+type Tenant = { name: string; slug: string; ui_primary_color: string | null; whatsapp_number: string | null; whatsapp_api_key: string | null; allow_overlap: boolean | null; business_type: string | null }
+
+const BUSINESS_TYPES = [
+    { value: 'general', label: '🏢 General / Servicios', resourceLabel: 'Servicio' },
+    { value: 'clinic', label: '🏥 Clínica / Salud', resourceLabel: 'Doctor/a' },
+    { value: 'restaurant', label: '🍽ï¸ Restaurante / Café', resourceLabel: 'Mesa' },
+    { value: 'sports', label: '⚽ Canchas / Deportes', resourceLabel: 'Cancha' },
+]
 
 export function TenantInfoForm({ tenant }: { tenant: Tenant }) {
     const [isPending, startTransition] = useTransition()
@@ -27,13 +34,27 @@ export function TenantInfoForm({ tenant }: { tenant: Tenant }) {
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Pencil className="w-4 h-4" /> Datos del Negocio</CardTitle>
-                <CardDescription>Edita el nombre y color principal que verán tus clientes al reservar.</CardDescription>
+                <CardDescription>Edita el nombre, tipo y color principal que verán tus clientes al reservar.</CardDescription>
             </CardHeader>
             <CardContent>
                 <form action={handleUpdate} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="name">Nombre del Negocio</Label>
                         <Input id="name" name="name" defaultValue={tenant.name} required />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="business_type">Tipo de Negocio</Label>
+                        <select
+                            id="business_type"
+                            name="business_type"
+                            defaultValue={tenant.business_type || 'general'}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                            {BUSINESS_TYPES.map(t => (
+                                <option key={t.value} value={t.value}>{t.label}</option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-muted-foreground">Determina cómo se ve la página de reservas para tus clientes.</p>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="ui_primary_color">Color Principal (HEX)</Label>
@@ -55,17 +76,21 @@ export function TenantInfoForm({ tenant }: { tenant: Tenant }) {
     )
 }
 
-export function ResourcesManager({ resources }: { resources: Resource[] }) {
+export function ResourcesManager({ resources, businessType }: { resources: Resource[]; businessType: string | null }) {
+    const btype = businessType || 'general'
+    const typeInfo = BUSINESS_TYPES.find(t => t.value === btype) || BUSINESS_TYPES[0]
     const [isPending, startTransition] = useTransition()
     const [localResources, setLocalResources] = useState(resources)
 
     async function handleAdd(formData: FormData) {
+        // Inject resource_type según el rubro
+        const rt = btype === 'clinic' ? 'doctor' : btype === 'restaurant' ? 'table' : btype === 'sports' ? 'court' : 'generic'
+        formData.set('resource_type', rt)
         startTransition(async () => {
             const res = await addResource(formData)
             if (res.error) toast.error(res.error)
             else {
-                toast.success('Servicio agregado.')
-                // Reset the form
+                toast.success(`${typeInfo.resourceLabel} agregado.`)
                 const form = document.getElementById('add-resource-form') as HTMLFormElement
                 form?.reset()
             }
@@ -77,7 +102,7 @@ export function ResourcesManager({ resources }: { resources: Resource[] }) {
             const res = await deleteResource(id)
             if (res.error) toast.error(res.error)
             else {
-                toast.success('Servicio eliminado.')
+                toast.success(`${typeInfo.resourceLabel} eliminado.`)
                 setLocalResources(prev => prev.filter(r => r.id !== id))
             }
         })
@@ -86,51 +111,110 @@ export function ResourcesManager({ resources }: { resources: Resource[] }) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Settings2 className="w-4 h-4" /> Servicios / Recursos</CardTitle>
-                <CardDescription>Estos son los servicios que tus clientes podrán reservar en tu página pública.</CardDescription>
+                <CardTitle className="flex items-center gap-2"><Settings2 className="w-4 h-4" /> {typeInfo.resourceLabel}s / Recursos</CardTitle>
+                <CardDescription>
+                    {btype === 'clinic' && 'Agrega los profesionales de salud. Los clientes elegirán con quién atenderse.'}
+                    {btype === 'restaurant' && 'Define tus mesas. Los clientes verán cuáles están disponibles.'}
+                    {btype === 'sports' && 'Agrega tus canchas. Cada una tendrá horarios independientes.'}
+                    {btype === 'general' && 'Estos son los servicios que tus clientes podrán reservar.'}
+                </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 {/* Lista actual */}
                 <div className="space-y-2">
                     {localResources.length === 0 && (
-                        <p className="text-sm text-muted-foreground italic text-center py-4">No tienes servicios aún. Agrega uno abajo.</p>
+                        <p className="text-sm text-muted-foreground italic text-center py-4">No tienes {typeInfo.resourceLabel.toLowerCase()}s aún. Agrega uno abajo.</p>
                     )}
                     {localResources.map(r => (
                         <div key={r.id} className="flex items-center justify-between gap-3 border rounded-md px-4 py-3 hover:bg-muted/30 transition-colors">
-                            <div>
-                                <p className="font-medium text-sm">{r.name}</p>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm">{r.display_name || r.name}</p>
                                 {r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}
+                                {btype === 'restaurant' && r.capacity && (
+                                    <p className="text-xs text-muted-foreground">👥 {r.capacity} personas</p>
+                                )}
+                                {btype === 'sports' && r.capacity && (
+                                    <p className="text-xs text-muted-foreground">👥 Capacidad: {r.capacity} personas</p>
+                                )}
                             </div>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => handleDelete(r.id)}
-                                disabled={isPending}
-                            >
+                            <Button variant="ghost" size="icon" className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDelete(r.id)} disabled={isPending}>
                                 <Trash2 className="w-4 h-4" />
                             </Button>
                         </div>
                     ))}
                 </div>
 
-                {/* Formulario para agregar */}
+                {/* Formulario adaptativo */}
                 <div className="border-t pt-4">
-                    <p className="text-sm font-semibold mb-3">Agregar Nuevo Servicio</p>
+                    <p className="text-sm font-semibold mb-3">Agregar {typeInfo.resourceLabel}</p>
                     <form id="add-resource-form" action={handleAdd} className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <Label htmlFor="res-name" className="text-xs">Nombre del Servicio</Label>
-                                <Input id="res-name" name="name" placeholder="Ej: Consulta Médica" required />
+                        {btype === 'clinic' && (
+                            <>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs">Título + Nombre <span className="text-muted-foreground">(ej: Dr. Juan Pérez)</span></Label>
+                                        <Input name="display_name" placeholder="Dr. / Dra. Nombre Apellido" required />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs">Especialidad</Label>
+                                        <Input name="description" placeholder="Ej: Medicina General, Traumatología" />
+                                    </div>
+                                </div>
+                                <input type="hidden" name="name" value="doctor" />
+                            </>
+                        )}
+                        {btype === 'restaurant' && (
+                            <>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs">Nombre de la mesa</Label>
+                                        <Input name="name" placeholder="Ej: Mesa Terraza, Mesa 5" required />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs">Capacidad (personas)</Label>
+                                        <Input name="capacity" type="number" min="1" max="20" defaultValue="4" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs">Descripción / Ubicación <span className="text-muted-foreground">(opcional)</span></Label>
+                                    <Input name="description" placeholder="Ej: Junto a la ventana, zona exterior" />
+                                </div>
+                            </>
+                        )}
+                        {btype === 'sports' && (
+                            <>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs">Nombre de la cancha</Label>
+                                        <Input name="name" placeholder="Ej: Cancha 1, Pádel A, Fútbol Norte" required />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs">Tipo / Deporte</Label>
+                                        <Input name="description" placeholder="Ej: Pádel, Fútbol 7, Tenis" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs">Jugadores (capacidad)</Label>
+                                    <Input name="capacity" type="number" min="1" max="22" defaultValue="2" />
+                                </div>
+                            </>
+                        )}
+                        {btype === 'general' && (
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="res-name" className="text-xs">Nombre del Servicio</Label>
+                                    <Input id="res-name" name="name" placeholder="Ej: Consulta Médica" required />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="res-desc" className="text-xs">Descripción (opcional)</Label>
+                                    <Input id="res-desc" name="description" placeholder="Ej: Duración 30 min" />
+                                </div>
                             </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="res-desc" className="text-xs">Descripción (opcional)</Label>
-                                <Input id="res-desc" name="description" placeholder="Ej: Duración 30 min" />
-                            </div>
-                        </div>
+                        )}
                         <Button type="submit" variant="outline" className="gap-2" disabled={isPending}>
                             <PlusCircle className="w-4 h-4" />
-                            {isPending ? 'Agregando...' : 'Agregar Servicio'}
+                            {isPending ? 'Agregando...' : `Agregar ${typeInfo.resourceLabel}`}
                         </Button>
                     </form>
                 </div>

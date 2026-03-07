@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 
 export async function createReservation(
     tenantSlug: string,
-    serviceName: string,
+    resourceId: string,
     date: Date,
     timeStr: string,
     customerData: { fullName: string; email: string; phone: string }
@@ -28,16 +28,16 @@ export async function createReservation(
             return { error: `Negocio no encontrado. Detalles: ${tenantErr?.message || 'El negocio (slug) no existe en la BD'}` }
         }
 
-        // 2. Obtener el primer recurso disponible (Asumiremos que el Tenant tiene 1 recurso base por ahora en el MVP)
+        // 2. Verificar que el recurso existe y pertenece al tenant
         const { data: resource, error: resErr } = await supabase
             .from('resources')
-            .select('id')
+            .select('id, name')
+            .eq('id', resourceId)
             .eq('tenant_id', tenant.id)
-            .limit(1)
             .maybeSingle()
 
         if (resErr || !resource) {
-            return { error: `Sin recursos configurados. Detalles: ${resErr?.message || 'Ninguno'}` }
+            return { error: `Recurso no válido o no pertenece a este negocio.` }
         }
 
         // 3. Crear o encontrar Cliente (Customer CRM)
@@ -86,6 +86,7 @@ export async function createReservation(
                 .not('status', 'eq', 'canceled')  // Ignorar canceladas
                 .lt('start_time', endDate.toISOString())   // Otra reserva que empieza antes que termine esta
                 .gt('end_time', startDate.toISOString())   // Y termina después que empiece esta
+                .eq('resource_id', resource.id)            // Fundamental: solapamiento solo importa POR RECURSO
                 .limit(1)
                 .maybeSingle()
 
@@ -130,7 +131,7 @@ export async function createReservation(
                     ``,
                     `🗓️ Fecha: ${fechaFormateada}`,
                     `⏰ Hora: ${horaFormateada} hrs`,
-                    `💼 Servicio: ${serviceName}`,
+                    `💼 Recurso: ${resource.name}`,
                 ].join('\n')
 
                 const encodedMsg = encodeURIComponent(mensaje)
@@ -155,8 +156,8 @@ export async function createReservation(
     }
 }
 
-// Obtener los slots ya reservados para un día puntual
-export async function getBookedSlots(tenantSlug: string, dateStr: string): Promise<string[]> {
+// Obtener los slots ya reservados para un día puntual y recurso opcional
+export async function getBookedSlots(tenantSlug: string, dateStr: string, resourceId?: string | null): Promise<string[]> {
     const supabase = createAdminClient()
 
     const { data: tenant } = await supabase
@@ -170,13 +171,19 @@ export async function getBookedSlots(tenantSlug: string, dateStr: string): Promi
     const dayStart = new Date(`${dateStr}T00:00:00`).toISOString()
     const dayEnd = new Date(`${dateStr}T23:59:59`).toISOString()
 
-    const { data: reservas } = await supabase
+    let query = supabase
         .from('reservations')
         .select('start_time')
         .eq('tenant_id', tenant.id)
         .not('status', 'eq', 'canceled')
         .gte('start_time', dayStart)
         .lte('start_time', dayEnd)
+
+    if (resourceId) {
+        query = query.eq('resource_id', resourceId)
+    }
+
+    const { data: reservas } = await query
 
     if (!reservas) return []
 

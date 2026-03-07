@@ -20,9 +20,22 @@ export default async function HorariosPage() {
 
     if (!tenantUser) redirect('/setup')
 
+    const { data: tenant } = await supabase
+        .from('tenants')
+        .select('business_type')
+        .eq('id', tenantUser.tenant_id)
+        .single()
+
+    const { data: resources } = await supabase
+        .from('resources')
+        .select('id, name, display_name, resource_type')
+        .eq('tenant_id', tenantUser.tenant_id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: true })
+
     const { data: rules } = await supabase
         .from('availability_rules')
-        .select('day_of_week, start_time, end_time, is_active')
+        .select('day_of_week, start_time, end_time, is_active, resource_id')
         .eq('tenant_id', tenantUser.tenant_id)
         .order('day_of_week', { ascending: true })
 
@@ -45,7 +58,11 @@ export default async function HorariosPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <HorariosClient rules={(rules || []) as any} />
+                    <HorariosClient
+                        rules={(rules || []) as any}
+                        resources={(resources || []) as any}
+                        businessType={tenant?.business_type || 'general'}
+                    />
                 </CardContent>
             </Card>
         </div>

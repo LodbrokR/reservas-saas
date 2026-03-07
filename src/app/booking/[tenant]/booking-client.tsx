@@ -12,8 +12,8 @@ import { createReservation, getBookedSlots } from "./actions"
 import { toast } from "sonner"
 import "react-day-picker/dist/style.css"
 
-type Service = { id: string; name: string; description: string | null }
-type AvailRule = { day_of_week: number; start_time: string; end_time: string; is_active: boolean }
+type Service = { id: string; name: string; display_name: string | null; description: string | null; capacity: number; resource_type: string | null }
+type AvailRule = { day_of_week: number; start_time: string; end_time: string; is_active: boolean; resource_id: string | null }
 
 const STEP_LABELS = ["Servicio", "Fecha y Hora", "Tus Datos", "Confirmación"]
 
@@ -126,11 +126,12 @@ function FloatingSummary({ service, date, time, color }: {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function BookingPageClient({
-    tenantSlug, tenantName, tenantColor, services, availability,
+    tenantSlug, tenantName, tenantColor, businessType, services, availability,
 }: {
     tenantSlug: string
     tenantName: string
     tenantColor: string
+    businessType: string
     services: Service[]
     availability: AvailRule[]
 }) {
@@ -148,15 +149,19 @@ export default function BookingPageClient({
     useEffect(() => {
         if (!date) { setBookedSlots([]); return }
         setLoadingSlots(true)
-        getBookedSlots(tenantSlug, format(date, 'yyyy-MM-dd'))
+        getBookedSlots(tenantSlug, format(date, 'yyyy-MM-dd'), selectedService?.id)
             .then(slots => setBookedSlots(slots))
             .finally(() => setLoadingSlots(false))
-    }, [date, tenantSlug])
+    }, [date, tenantSlug, selectedService?.id])
 
-    const activeDays = new Set(availability.map(r => r.day_of_week))
+    // Reglas de horario para el recurso seleccionado (o fallback a generales)
+    const resourceRules = availability.filter(r => r.resource_id === selectedService?.id)
+    const rulesToUse = resourceRules.length > 0 ? resourceRules : availability.filter(r => r.resource_id === null)
+
+    const activeDays = new Set(rulesToUse.map(r => r.day_of_week))
 
     function getHoras(d: Date): string[] {
-        const rule = availability.find(r => r.day_of_week === d.getDay())
+        const rule = rulesToUse.find(r => r.day_of_week === d.getDay())
         if (!rule) return []
         const slots: string[] = []
         const [sh, sm] = rule.start_time.substring(0, 5).split(":").map(Number)
@@ -179,7 +184,7 @@ export default function BookingPageClient({
     async function handleConfirm() {
         if (!date || !selectedService || !selectedTime) return
         setLoading(true)
-        const res = await createReservation(tenantSlug, selectedService.name, date, selectedTime, customer)
+        const res = await createReservation(tenantSlug, selectedService.id, date, selectedTime, customer)
         setLoading(false)
         if (res.error) {
             toast.error(res.error)
@@ -190,16 +195,32 @@ export default function BookingPageClient({
         }
     }
 
-    // ── Step 0: Selección de Servicio ──
+    // ── Textos según rubro ──
+    const textServiceTitle = businessType === 'clinic' ? '¿Con qué especialista?' :
+        businessType === 'restaurant' ? '¿En qué mesa o sector?' :
+            businessType === 'sports' ? '¿Qué cancha deseas reservar?' :
+                '¿Qué servicio necesitas?'
+
+    const textServiceDesc = businessType === 'clinic' ? 'Selecciona a un profesional' :
+        businessType === 'restaurant' ? 'Selecciona tu mesa preferida' :
+            businessType === 'sports' ? 'Elige la cancha para continuar' :
+                'Selecciona uno para comenzar'
+
+    const textEmptyServices = businessType === 'clinic' ? 'No hay doctores configurados aún.' :
+        businessType === 'restaurant' ? 'No hay mesas configuradas aún.' :
+            businessType === 'sports' ? 'No hay canchas configuradas aún.' :
+                'No hay servicios configurados aún.'
+
+    // ── Step 0: Selección de Servicio / Recurso ──
     const Step0 = (
         <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center mb-6">
-                <h2 className="text-xl font-bold">¿Qué servicio necesitas?</h2>
-                <p className="text-muted-foreground text-sm mt-1">Selecciona uno para comenzar</p>
+                <h2 className="text-xl font-bold">{textServiceTitle}</h2>
+                <p className="text-muted-foreground text-sm mt-1">{textServiceDesc}</p>
             </div>
             {services.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground border border-dashed rounded-xl">
-                    No hay servicios configurados aún.
+                    {textEmptyServices}
                 </div>
             ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -212,7 +233,7 @@ export default function BookingPageClient({
                         >
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-base leading-snug">{s.name}</p>
+                                    <p className="font-semibold text-base leading-snug">{s.display_name || s.name}</p>
                                     {s.description && (
                                         <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{s.description}</p>
                                     )}
@@ -223,7 +244,10 @@ export default function BookingPageClient({
                                 </div>
                             </div>
                             <div className="flex items-center justify-between mt-4">
-                                <span className="text-xs text-muted-foreground">30 min</span>
+                                <span className="text-xs text-muted-foreground">
+                                    {businessType === 'restaurant' ? `Capacidad: ${s.capacity} presonas` :
+                                        businessType === 'sports' ? `${s.capacity} jugadores` : '30 min'}
+                                </span>
                                 <span className="text-xs font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: tenantColor }}>
                                     Seleccionar <ChevronRight className="w-3 h-3" />
                                 </span>

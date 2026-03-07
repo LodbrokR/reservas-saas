@@ -23,13 +23,13 @@ export default async function ConfiguracionPage() {
 
     const { data: tenant } = await supabase
         .from('tenants')
-        .select('name, slug, ui_primary_color, whatsapp_number, whatsapp_api_key, allow_overlap')
+        .select('name, slug, ui_primary_color, whatsapp_number, whatsapp_api_key, allow_overlap, business_type')
         .eq('id', tenantUser.tenant_id)
         .single()
 
     const { data: resources } = await supabase
         .from('resources')
-        .select('id, name, description')
+        .select('id, name, display_name, description, capacity, resource_type')
         .eq('tenant_id', tenantUser.tenant_id)
         .order('created_at', { ascending: true })
 
@@ -46,7 +46,7 @@ export default async function ConfiguracionPage() {
 
             <div className="grid gap-6 md:grid-cols-2">
                 <TenantInfoForm tenant={tenant} />
-                <ResourcesManager resources={resources || []} />
+                <ResourcesManager resources={resources || []} businessType={tenant.business_type} />
                 <WhatsAppForm tenant={tenant} />
                 <BookingPolicyForm tenant={tenant} />
             </div>

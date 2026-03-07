@@ -26,11 +26,12 @@ export async function updateTenantInfo(formData: FormData) {
 
     const name = formData.get('name') as string
     const color = formData.get('ui_primary_color') as string
+    const business_type = formData.get('business_type') as string
 
     const supabase = createAdminClient()
     const { error } = await supabase
         .from('tenants')
-        .update({ name, ui_primary_color: color })
+        .update({ name, ui_primary_color: color, business_type })
         .eq('id', tenantId)
 
     if (error) return { error: `Error actualizando negocio: ${error.message}` }
@@ -85,15 +86,18 @@ export async function addResource(formData: FormData) {
 
     const name = formData.get('name') as string
     const description = formData.get('description') as string
+    const display_name = formData.get('display_name') as string
+    const capacity = parseInt(formData.get('capacity') as string || '1')
+    const resource_type = formData.get('resource_type') as string || 'generic'
 
-    if (!name) return { error: 'El nombre del servicio es obligatorio.' }
+    if (!name) return { error: 'El nombre del recurso es obligatorio.' }
 
     const supabase = createAdminClient()
     const { error } = await supabase
         .from('resources')
-        .insert({ tenant_id: tenantId, name, description })
+        .insert({ tenant_id: tenantId, name, description, display_name, capacity, resource_type })
 
-    if (error) return { error: `Error creando servicio: ${error.message}` }
+    if (error) return { error: `Error creando recurso: ${error.message}` }
 
     revalidatePath('/admin/configuracion')
     return { success: true }
