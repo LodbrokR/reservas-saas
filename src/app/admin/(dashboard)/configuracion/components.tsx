@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Trash2, PlusCircle, Pencil, Settings2, MessageCircle, ExternalLink } from 'lucide-react'
-import { addResource, deleteResource, updateTenantInfo, updateWhatsApp } from './actions'
+import { Trash2, PlusCircle, Pencil, Settings2, MessageCircle, ExternalLink, ShieldCheck } from 'lucide-react'
+import { addResource, deleteResource, updateTenantInfo, updateWhatsApp, updateBookingPolicy } from './actions'
 import { toast } from 'sonner'
 
 type Resource = { id: string; name: string; description: string | null }
-type Tenant = { name: string; slug: string; ui_primary_color: string | null; whatsapp_number: string | null; whatsapp_api_key: string | null }
+type Tenant = { name: string; slug: string; ui_primary_color: string | null; whatsapp_number: string | null; whatsapp_api_key: string | null; allow_overlap: boolean | null }
 
 export function TenantInfoForm({ tenant }: { tenant: Tenant }) {
     const [isPending, startTransition] = useTransition()
@@ -212,6 +212,53 @@ export function WhatsAppForm({ tenant }: { tenant: Tenant }) {
                             {isPending ? 'Guardando...' : 'Guardar Configuración de WhatsApp'}
                         </Button>
                     </div>
+                </form>
+            </CardContent>
+        </Card>
+    )
+}
+
+export function BookingPolicyForm({ tenant }: { tenant: Tenant }) {
+    const [isPending, startTransition] = useTransition()
+
+    async function handleSave(formData: FormData) {
+        startTransition(async () => {
+            const res = await updateBookingPolicy(formData)
+            if (res.error) toast.error(res.error)
+            else toast.success('Política de reservas actualizada.')
+        })
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-blue-500" /> Política de Reservas
+                </CardTitle>
+                <CardDescription>
+                    Define si se pueden hacer múltiples reservas en el mismo horario (ej: consultas paralelas vs. turno único).
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form action={handleSave} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="allow_overlap">¿Permite más de una reserva en el mismo horario?</Label>
+                        <select
+                            id="allow_overlap"
+                            name="allow_overlap"
+                            defaultValue={tenant.allow_overlap ? 'true' : 'false'}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                            <option value="false">❌ No — Solo 1 reserva por bloque horario (recomendado para consultas médicas)</option>
+                            <option value="true">✅ Sí — Múltiples reservas en el mismo horario (clases grupales, eventos)</option>
+                        </select>
+                        <p className="text-xs text-muted-foreground">
+                            Cuando está desactivado, el sistema rechazará automáticamente reservas que choquen con una existente.
+                        </p>
+                    </div>
+                    <Button type="submit" disabled={isPending} variant="outline">
+                        {isPending ? 'Guardando...' : 'Guardar Política'}
+                    </Button>
                 </form>
             </CardContent>
         </Card>

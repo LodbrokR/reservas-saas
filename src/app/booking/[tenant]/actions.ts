@@ -17,10 +17,10 @@ export async function createReservation(
 
         const supabase = createAdminClient()
 
-        // 1. Obtener ID del Tenant (con datos de WhatsApp)
+        // 1. Obtener ID del Tenant (con datos de WhatsApp y política de solapamiento)
         const { data: tenant, error: tenantErr } = await supabase
             .from('tenants')
-            .select('id, name, whatsapp_number, whatsapp_api_key')
+            .select('id, name, whatsapp_number, whatsapp_api_key, allow_overlap')
             .eq('slug', tenantSlug)
             .maybeSingle()
 
@@ -77,7 +77,24 @@ export async function createReservation(
         const endDate = new Date(startDate)
         endDate.setMinutes(endDate.getMinutes() + 30) // Asumimos bloque de 30 min por ahora
 
-        // 5. Insertar la Reserva
+        // 5. Verificar colisión de horario (si el negocio no permite solapamiento)
+        if (!tenant.allow_overlap) {
+            const { data: clash } = await supabase
+                .from('reservations')
+                .select('id')
+                .eq('tenant_id', tenant.id)
+                .not('status', 'eq', 'canceled')  // Ignorar canceladas
+                .lt('start_time', endDate.toISOString())   // Otra reserva que empieza antes que termine esta
+                .gt('end_time', startDate.toISOString())   // Y termina después que empiece esta
+                .limit(1)
+                .maybeSingle()
+
+            if (clash) {
+                return { error: `❌ Ese horario (${timeStr} hrs) ya está ocupado. Por favor elige otro bloque disponible.` }
+            }
+        }
+
+        // 6. Insertar la Reserva
         const { error: reserveErr } = await supabase
             .from('reservations')
             .insert({
@@ -86,7 +103,7 @@ export async function createReservation(
                 customer_id: customerId,
                 start_time: startDate.toISOString(),
                 end_time: endDate.toISOString(),
-                status: 'confirmed', // Asumido por ahora
+                status: 'confirmed',
                 payment_status: 'unpaid'
             })
 

@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import { TenantInfoForm, ResourcesManager, WhatsAppForm } from './components'
+import { TenantInfoForm, ResourcesManager, WhatsAppForm, BookingPolicyForm } from './components'
 
 export const metadata = {
     title: 'Ajustes del Negocio | Admin',
@@ -23,7 +23,7 @@ export default async function ConfiguracionPage() {
 
     const { data: tenant } = await supabase
         .from('tenants')
-        .select('name, slug, ui_primary_color, whatsapp_number, whatsapp_api_key')
+        .select('name, slug, ui_primary_color, whatsapp_number, whatsapp_api_key, allow_overlap')
         .eq('id', tenantUser.tenant_id)
         .single()
 
@@ -48,6 +48,7 @@ export default async function ConfiguracionPage() {
                 <TenantInfoForm tenant={tenant} />
                 <ResourcesManager resources={resources || []} />
                 <WhatsAppForm tenant={tenant} />
+                <BookingPolicyForm tenant={tenant} />
             </div>
         </div>
     )

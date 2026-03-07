@@ -59,6 +59,25 @@ export async function updateWhatsApp(formData: FormData) {
     return { success: true }
 }
 
+// Actualizar la política de reservas simultáneas
+export async function updateBookingPolicy(formData: FormData) {
+    const tenantId = await getCurrentTenantId()
+    if (!tenantId) return { error: 'No tienes permisos para esta acción.' }
+
+    const allow_overlap = formData.get('allow_overlap') === 'true'
+
+    const supabase = createAdminClient()
+    const { error } = await supabase
+        .from('tenants')
+        .update({ allow_overlap })
+        .eq('id', tenantId)
+
+    if (error) return { error: `Error guardando política: ${error.message}` }
+
+    revalidatePath('/admin/configuracion')
+    return { success: true }
+}
+
 // Agregar un nuevo servicio/recurso
 export async function addResource(formData: FormData) {
     const tenantId = await getCurrentTenantId()
