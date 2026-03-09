@@ -103,3 +103,21 @@ export async function deleteReservation(reservationId: string) {
     revalidatePath('/admin/reservas')
     return { success: true }
 }
+
+// Cambiar el estado de pago de una reserva (paid, unpaid)
+export async function updatePaymentStatus(reservationId: string, payment_status: string) {
+    const tenantId = await getCurrentTenantId()
+    if (!tenantId) return { error: 'Sin permisos.' }
+
+    const supabase = createAdminClient()
+    const { error } = await supabase
+        .from('reservations')
+        .update({ payment_status })
+        .eq('id', reservationId)
+        .eq('tenant_id', tenantId)
+
+    if (error) return { error: `Error cambiando estado de pago: ${error.message}` }
+
+    revalidatePath('/admin/reservas')
+    return { success: true }
+}

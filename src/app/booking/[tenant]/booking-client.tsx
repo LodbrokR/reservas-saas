@@ -7,15 +7,34 @@ import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Clock, CheckCircle2, ChevronRight, ChevronLeft, Calendar as CalIcon, Sparkles } from "lucide-react"
+import { Clock, CheckCircle2, ChevronRight, ChevronLeft, Calendar as CalIcon, Sparkles, Banknote } from "lucide-react"
 import { createReservation, getBookedSlots } from "./actions"
 import { toast } from "sonner"
 import "react-day-picker/dist/style.css"
+import { Card, CardContent } from '@/components/ui/card'
+
+const STEP_LABELS = ["Servicio", "Fecha y Hora", "Tus Datos", "Confirmación"]
+
+type PaymentConfig = {
+    enabled: boolean
+    bankName?: string | null
+    accountType?: string | null
+    accountNumber?: string | null
+    accountEmail?: string | null
+}
 
 type Service = { id: string; name: string; display_name: string | null; description: string | null; capacity: number; resource_type: string | null }
 type AvailRule = { day_of_week: number; start_time: string; end_time: string; is_active: boolean; resource_id: string | null }
 
-const STEP_LABELS = ["Servicio", "Fecha y Hora", "Tus Datos", "Confirmación"]
+interface Props {
+    tenantSlug: string
+    tenantName: string
+    tenantColor: string
+    businessType: string
+    services: Service[]
+    availability: AvailRule[]
+    paymentConfig?: PaymentConfig
+}
 
 // ─── Confetti ───────────────────────────────────────────────────────────────
 function Confetti() {
@@ -126,15 +145,14 @@ function FloatingSummary({ service, date, time, color }: {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function BookingPageClient({
-    tenantSlug, tenantName, tenantColor, businessType, services, availability,
-}: {
-    tenantSlug: string
-    tenantName: string
-    tenantColor: string
-    businessType: string
-    services: Service[]
-    availability: AvailRule[]
-}) {
+    tenantSlug,
+    tenantName,
+    tenantColor,
+    businessType,
+    services,
+    availability,
+    paymentConfig
+}: Props) {
     const [step, setStep] = useState(0)
     const [selectedService, setSelectedService] = useState<Service | null>(null)
     const [date, setDate] = useState<Date | undefined>()
@@ -415,15 +433,33 @@ export default function BookingPageClient({
                     a las <strong>{selectedTime} hrs</strong>.
                 </p>
             </div>
-            <div className="inline-flex flex-col items-center gap-2 border rounded-2xl p-5 bg-card max-w-xs w-full mx-auto text-left">
+            <div className="inline-flex flex-col items-center gap-2 border rounded-2xl p-5 bg-card max-w-xs w-full mx-auto text-left shadow-sm">
                 <div className="w-full space-y-1.5 text-sm">
-                    <div className="flex justify-between"><span className="text-muted-foreground">Servicio</span><span className="font-medium">{selectedService?.name}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Servicio</span><span className="font-medium text-right">{selectedService?.name}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Fecha</span><span className="font-medium">{date ? format(date, "dd/MM/yyyy") : ""}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Hora</span><span className="font-medium">{selectedTime} hrs</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Nombre</span><span className="font-medium">{customer.fullName}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Nombre</span><span className="font-medium text-right">{customer.fullName}</span></div>
                 </div>
             </div>
-            <Button variant="outline" className="rounded-xl" onClick={() => {
+
+            {paymentConfig?.enabled && paymentConfig.bankName && (
+                <div className="border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/50 rounded-2xl p-5 max-w-sm w-full mx-auto text-left shadow-sm space-y-3">
+                    <div className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-500">
+                        <Banknote className="w-5 h-5" /> Acordar Pago
+                    </div>
+                    <p className="text-xs text-amber-900/80 dark:text-amber-200/70">
+                        Para confirmar tu reserva definitivamente, por favor realiza una transferencia a la siguiente cuenta:
+                    </p>
+                    <div className="bg-white dark:bg-black/40 rounded-lg p-3 text-sm space-y-1 text-foreground border border-amber-100 dark:border-amber-900/30 font-medium">
+                        <div className="flex justify-between border-b pb-1 mb-1"><span className="text-muted-foreground font-normal">Banco:</span> <span>{paymentConfig.bankName}</span></div>
+                        <div className="flex justify-between border-b pb-1 mb-1"><span className="text-muted-foreground font-normal">Tipo:</span> <span>{paymentConfig.accountType}</span></div>
+                        <div className="flex justify-between border-b pb-1 mb-1"><span className="text-muted-foreground font-normal">N° Cuenta:</span> <span>{paymentConfig.accountNumber}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground font-normal">Correo:</span> <span>{paymentConfig.accountEmail}</span></div>
+                    </div>
+                </div>
+            )}
+
+            <Button variant="outline" className="rounded-xl mt-4" onClick={() => {
                 setStep(0); setSelectedService(null); setDate(undefined); setSelectedTime(null); setCustomer({ fullName: "", email: "", phone: "", notes: "" })
             }}>
                 Hacer nueva reserva

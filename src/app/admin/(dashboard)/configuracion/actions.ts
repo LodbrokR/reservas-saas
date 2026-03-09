@@ -120,3 +120,32 @@ export async function deleteResource(resourceId: string) {
     revalidatePath('/admin/configuracion')
     return { success: true }
 }
+
+// Actualizar configuración de pagos manuales
+export async function updatePaymentConfig(formData: FormData) {
+    const tenantId = await getCurrentTenantId()
+    if (!tenantId) return { error: 'No tienes permisos para esta acción.' }
+
+    const enable_payment_transfer = formData.get('enable_payment_transfer') === 'true'
+    const bank_name = formData.get('bank_name') as string || null
+    const account_type = formData.get('account_type') as string || null
+    const account_number = formData.get('account_number') as string || null
+    const account_email = formData.get('account_email') as string || null
+
+    const supabase = createAdminClient()
+    const { error } = await supabase
+        .from('tenants')
+        .update({
+            enable_payment_transfer,
+            bank_name,
+            account_type,
+            account_number,
+            account_email
+        })
+        .eq('id', tenantId)
+
+    if (error) return { error: `Error guardando configuración de pagos: ${error.message}` }
+
+    revalidatePath('/admin/configuracion')
+    return { success: true }
+}

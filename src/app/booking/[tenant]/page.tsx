@@ -13,7 +13,7 @@ export default async function BookingPage({
     // Cargar datos reales del Tenant por Slug
     const { data: tenantData } = await supabase
         .from('tenants')
-        .select('id, name, slug, ui_primary_color, business_type')
+        .select('id, name, slug, ui_primary_color, business_type, enable_payment_transfer, bank_name, account_type, account_number, account_email')
         .eq('slug', tenant)
         .maybeSingle()
 
@@ -42,6 +42,13 @@ export default async function BookingPage({
             businessType={tenantData.business_type || 'general'}
             services={resources || []}
             availability={availability || []}
+            paymentConfig={{
+                enabled: tenantData.enable_payment_transfer,
+                bankName: tenantData.bank_name,
+                accountType: tenantData.account_type,
+                accountNumber: tenantData.account_number,
+                accountEmail: tenantData.account_email
+            }}
         />
     )
 }

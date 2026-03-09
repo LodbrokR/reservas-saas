@@ -9,8 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { CalendarIcon, Clock, User, ChevronDown, ChevronUp, CheckCircle, XCircle, RotateCcw, Trash2 } from 'lucide-react'
-import { updateReservationTime, updateCustomerData, updateReservationStatus, deleteReservation } from './actions'
+import { CalendarIcon, Clock, Edit2, User, Phone, Mail, FileText, CheckCircle, XCircle, RotateCcw, AlertTriangle, Trash2, Banknote, ChevronDown, ChevronUp } from 'lucide-react'
+import { updateReservationTime, updateCustomerData, updateReservationStatus, deleteReservation, updatePaymentStatus } from './actions'
 import { toast } from 'sonner'
 import 'react-day-picker/dist/style.css'
 
@@ -104,6 +104,14 @@ export function ReservaCard({ reserva }: { reserva: Reserva }) {
         })
     }
 
+    function handlePaymentStatus(status: 'paid' | 'unpaid') {
+        startTransition(async () => {
+            const res = await updatePaymentStatus(reserva.id, status)
+            if (res.error) toast.error(res.error)
+            else toast.success(`Pago marcado como ${status === 'paid' ? 'Completado' : 'Pendiente'}.`)
+        })
+    }
+
     const startDate = new Date(reserva.start_time)
     const endDate = new Date(reserva.end_time)
     const isPaid = reserva.payment_status === 'paid'
@@ -137,8 +145,21 @@ export function ReservaCard({ reserva }: { reserva: Reserva }) {
                         </div>
                     </div>
 
-                    {/* Acciones rápidas de estado */}
+                    {/* Acciones rápidas de estado y pago */}
                     <div className="flex items-center gap-2 shrink-0">
+                        {isPaid ? (
+                            <Button variant="outline" size="sm" onClick={() => handlePaymentStatus('unpaid')} disabled={isPending} title="Marcar como Pendiente" className="h-8 px-2 text-muted-foreground">
+                                <RotateCcw className="w-4 h-4 mr-1" /> Pendiente
+                            </Button>
+                        ) : (
+                            <Button variant="outline" size="sm" onClick={() => handlePaymentStatus('paid')} disabled={isPending} title="Marcar como Pagado" className="h-8 px-2 text-green-600 border-green-300 hover:bg-green-50">
+                                <Banknote className="w-4 h-4 mr-1" /> Pagado
+                            </Button>
+                        )}
+
+                        {/* Divisor vertical */}
+                        <div className="w-[1px] h-6 bg-border mx-1"></div>
+
                         {reserva.status !== 'confirmed' && (
                             <button title="Confirmar" onClick={() => handleStatus('confirmed')} disabled={isPending}
                                 className="p-1.5 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">

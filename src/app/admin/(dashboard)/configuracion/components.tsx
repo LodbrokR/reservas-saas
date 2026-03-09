@@ -6,11 +6,20 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Trash2, PlusCircle, Pencil, Settings2, MessageCircle, ExternalLink, ShieldCheck } from 'lucide-react'
-import { addResource, deleteResource, updateTenantInfo, updateWhatsApp, updateBookingPolicy } from './actions'
+import { addResource, deleteResource, updateTenantInfo, updateWhatsApp, updateBookingPolicy, updatePaymentConfig } from './actions'
 import { toast } from 'sonner'
+import { Switch } from '@/components/ui/switch'
 
 type Resource = { id: string; name: string; display_name: string | null; description: string | null; capacity: number | null; resource_type: string | null }
-type Tenant = { name: string; slug: string; ui_primary_color: string | null; whatsapp_number: string | null; whatsapp_api_key: string | null; allow_overlap: boolean | null; business_type: string | null }
+type Tenant = {
+    name: string; slug: string; ui_primary_color: string | null;
+    whatsapp_number: string | null; whatsapp_api_key: string | null; allow_overlap: boolean | null; business_type: string | null;
+    enable_payment_transfer?: boolean | null;
+    bank_name?: string | null;
+    account_type?: string | null;
+    account_number?: string | null;
+    account_email?: string | null;
+}
 
 const BUSINESS_TYPES = [
     { value: 'general', label: '🏢 General / Servicios', resourceLabel: 'Servicio' },
@@ -343,6 +352,85 @@ export function BookingPolicyForm({ tenant }: { tenant: Tenant }) {
                     <Button type="submit" disabled={isPending} variant="outline">
                         {isPending ? 'Guardando...' : 'Guardar Política'}
                     </Button>
+                </form>
+            </CardContent>
+        </Card>
+    )
+}
+
+export function PaymentConfigForm({ tenant }: { tenant: Tenant }) {
+    const [isPending, startTransition] = useTransition()
+    const [enabled, setEnabled] = useState(!!tenant.enable_payment_transfer)
+
+    async function handleSave(formData: FormData) {
+        formData.set('enable_payment_transfer', enabled.toString())
+        startTransition(async () => {
+            const res = await updatePaymentConfig(formData)
+            if (res.error) toast.error(res.error)
+            else toast.success('Configuración de pagos guardada.')
+        })
+    }
+
+    return (
+        <Card className="col-span-2">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-orange-500" /> Pagos por Transferencia Bancaria
+                </CardTitle>
+                <CardDescription>
+                    Permite a tus clientes reservar sujeto a pago mediante transferencia a tu cuenta personal/empresa.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form action={handleSave} className="space-y-6">
+                    <div className="flex items-center justify-between p-4 border rounded-md bg-muted/30">
+                        <div className="space-y-0.5">
+                            <Label className="text-base">Acordar Pago por Transferencia</Label>
+                            <p className="text-xs text-muted-foreground">Si está activo, se mostrarán tus datos bancarios al finalizar la reserva B2C.</p>
+                        </div>
+                        <Switch
+                            checked={enabled}
+                            onCheckedChange={setEnabled}
+                        />
+                    </div>
+
+                    {enabled && (
+                        <div className="grid sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="bank_name" className="text-sm">Banco</Label>
+                                <Input id="bank_name" name="bank_name" defaultValue={tenant.bank_name || ''} placeholder="Ej: Banco Estado, Banco Santander" required={enabled} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="account_type" className="text-sm">Tipo de Cuenta</Label>
+                                <select
+                                    id="account_type"
+                                    name="account_type"
+                                    defaultValue={tenant.account_type || ''}
+                                    required={enabled}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                    <option value="" disabled>Seleccionar tipo</option>
+                                    <option value="Corriente">Cuenta Corriente</option>
+                                    <option value="Vista">Cuenta Vista / RUT</option>
+                                    <option value="Ahorro">Cuenta de Ahorro</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="account_number" className="text-sm">Número de Cuenta</Label>
+                                <Input id="account_number" name="account_number" defaultValue={tenant.account_number || ''} placeholder="Ej: 11111111-1" required={enabled} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="account_email" className="text-sm">Correo para Comprobante</Label>
+                                <Input id="account_email" type="email" name="account_email" defaultValue={tenant.account_email || ''} placeholder="Ej: pagos@minegocio.com" required={enabled} />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="pt-2">
+                        <Button type="submit" disabled={isPending}>
+                            {isPending ? 'Guardando...' : 'Guardar Datos Bancarios'}
+                        </Button>
+                    </div>
                 </form>
             </CardContent>
         </Card>

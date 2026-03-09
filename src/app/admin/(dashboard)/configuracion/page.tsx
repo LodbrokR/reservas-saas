@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import { TenantInfoForm, ResourcesManager, WhatsAppForm, BookingPolicyForm } from './components'
+import { TenantInfoForm, ResourcesManager, WhatsAppForm, BookingPolicyForm, PaymentConfigForm } from './components'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export const metadata = {
@@ -24,7 +24,7 @@ export default async function ConfiguracionPage() {
 
     const { data: tenant } = await supabase
         .from('tenants')
-        .select('name, slug, ui_primary_color, whatsapp_number, whatsapp_api_key, allow_overlap, business_type')
+        .select('name, slug, ui_primary_color, whatsapp_number, whatsapp_api_key, allow_overlap, business_type, enable_payment_transfer, bank_name, account_type, account_number, account_email')
         .eq('id', tenantUser.tenant_id)
         .single()
 
@@ -62,6 +62,7 @@ export default async function ConfiguracionPage() {
 
                 <TabsContent value="otras" className="max-w-2xl space-y-6">
                     <div className="grid gap-6 md:grid-cols-2">
+                        <PaymentConfigForm tenant={tenant} />
                         <WhatsAppForm tenant={tenant} />
                         <BookingPolicyForm tenant={tenant} />
                     </div>
